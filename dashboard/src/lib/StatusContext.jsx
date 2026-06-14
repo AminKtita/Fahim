@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { getWorkouts, getNutrition, getPlan } from './api'
+import { deriveNutStatus } from './NutritionModals'
 import dayjs from 'dayjs'
 
 // ── streak logic ──────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ export function computeStreak(workouts, nutrition, plan) {
 
   const wMap = {}; workouts.forEach(w => { wMap[w.date] = w })
   const nMap = {}; nutrition.forEach(n => { nMap[n.date] = n })
+  const targets = plan?.nutrition_targets
 
   let streak = 0
   let d = dayjs()
@@ -33,33 +35,38 @@ export function computeStreak(workouts, nutrition, plan) {
   for (let i = 0; i < 120; i++) {
     const iso   = d.format('YYYY-MM-DD')
     const isRest = isPlannedRestDay(iso, plan)
+    const nutStatus = deriveNutStatus(nMap[iso], targets)
+    const nutHit = nutStatus === 'hit'
+    const w = wMap[iso]
+
+    // i===0 (today) gets a pass ONLY if NOTHING has been logged yet today
+    // (no nutrition status at all, and no workout row). If the athlete
+    // explicitly logged a 'missed' nutrition day or a 'missed' workout for
+    // today, that's a completed, deliberate failure and must break the
+    // streak immediately — it is NOT "day not over yet".
+    const todayUntouched = i === 0 && nutStatus == null && !w
 
     if (isRest) {
-      // Rest day: counts only if nutrition is hit (or today hasn't passed yet)
-      const nutHit = !!(nMap[iso] && nMap[iso].notes !== '__MISSED__' && nMap[iso].calories > 0)
+      // Rest day: counts only if nutrition status is exactly 'hit'
       if (nutHit) {
         streak++
         d = d.subtract(1, 'day')
         continue
       }
-      if (i === 0) { d = d.subtract(1, 'day'); continue } // today: skip, not over yet
-      break // past rest day with no nutrition → streak ends
+      if (todayUntouched) { d = d.subtract(1, 'day'); continue } // today not started yet — skip
+      break // rest day without nutrition hit → streak ends
     }
 
-    const w = wMap[iso]
-    const n = nMap[iso]
     const workoutDone = !!(w && w.session_type !== 'missed' && w.session_type !== 'rest')
-    const nutHit      = !!(n && n.notes !== '__MISSED__' && n.calories > 0)
 
     if (workoutDone && nutHit) {
       streak++
       d = d.subtract(1, 'day')
-    } else if (i === 0) {
-      // Today incomplete — allowed, skip and look at yesterday
+    } else if (todayUntouched) {
       d = d.subtract(1, 'day')
-      continue
+      continue // today not started yet — skip
     } else {
-      break // past non-rest day failed — streak ends
+      break // day failed (or explicit 'missed' logged today) — streak ends
     }
   }
 

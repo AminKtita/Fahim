@@ -254,68 +254,183 @@ def get_goals(status="active"):
     return [dict(r) for r in rows]
 
 
-# ─────────────────────────────────────────
-#  DAILY SUMMARY
-# ─────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────
+#  STREAK COMPUTATION
+#
+#  Python port of the dashboard's StatusContext / Schedule streak logic.
+#  Mirrors deriveNutStatus() in NutritionModals.jsx exactly so the
+#  backend snapshot (TODAY.md), the frontend navbar, and the AI's
+#  understanding of "current streak" all agree.
+#
+#  Rule:
+#  - A "streak day" requires:
+#      * workout done that day (session_type not 'missed'/'rest'), AND
+#      * nutrition status == 'hit' (within thresholds of plan targets)
+#  - On a planned REST day (no plan session for that weekday):
+#      * counts as a streak day ONLY if nutrition status == 'hit'
+#  - Today is allowed to be incomplete: if today doesn't qualify,
+#    skip it once and start counting from yesterday.
+#  - The first non-qualifying PAST day breaks the streak.
+#
+#  NOTE: the old daily_summary-based compute_streak() has been removed.
+#  upsert_daily_summary() and get_daily_summaries() are no longer called
+#  anywhere and can be removed too — they were part of an abandoned
+#  daily_summary mechanism that nothing ever populated correctly.
+# ─────────────────────────────────────────────────────────────────
 
-def upsert_daily_summary(summary_date, workout_done=None, calories_hit=None,
-                         protein_hit=None, weight_kg=None,
-                         coach_note=None, streak_days=None):
-    """Insert or update the daily summary row for a given date."""
-    conn = get_conn()
-    conn.execute("""
-        INSERT INTO daily_summary
-            (date, workout_done, calories_hit, protein_hit,
-             weight_kg, coach_note, streak_days)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(date) DO UPDATE SET
-            workout_done=COALESCE(excluded.workout_done, workout_done),
-            calories_hit=COALESCE(excluded.calories_hit, calories_hit),
-            protein_hit=COALESCE(excluded.protein_hit, protein_hit),
-            weight_kg=COALESCE(excluded.weight_kg, weight_kg),
-            coach_note=COALESCE(excluded.coach_note, coach_note),
-            streak_days=COALESCE(excluded.streak_days, streak_days)
-    """, (summary_date, workout_done, calories_hit, protein_hit,
-          weight_kg, coach_note, streak_days))
-    conn.commit()
-    conn.close()
+# Day-name → Python weekday() mapping (Monday=0 ... Sunday=6, matches date.weekday())
+_DAY_NAME_TO_WEEKDAY = {
+    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+    "friday": 4, "saturday": 5, "sunday": 6,
+    "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6,
+}
+
+# Sentinel stored in nutrition_log.notes for off-plan / cheat days
+# (must match NUTRITION_OFF_PLAN_SENTINEL in snapshot_writer.py)
+_NUTRITION_OFF_PLAN_SENTINEL = "__MISSED__"
+
+# session_types that mean "no real training happened"
+_NON_TRAINING_SESSION_TYPES = {"missed", "rest"}
 
 
-def get_daily_summaries(days=14):
-    """Returns daily summaries for the last N days."""
-    since = (date.today() - timedelta(days=days)).isoformat()
-    conn = get_conn()
-    rows = conn.execute("""
-        SELECT * FROM daily_summary
-        WHERE date >= ?
-        ORDER BY date DESC
-    """, (since,)).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+def _is_planned_rest_day(iso_date, plan_days_by_weekday):
+    """
+    Returns True if no plan session exists for this date's weekday.
+    plan_days_by_weekday: dict mapping weekday int (0=Mon..6=Sun) -> plan_day row
+    If there's no active plan at all, every day is treated as "not a rest day"
+    (i.e. requires a workout to count) — matches the JS:
+    `isPlannedRestDay` returns False when `!plan?.days?.length`.
+    """
+    if not plan_days_by_weekday:
+        return False
+    wd = date.fromisoformat(iso_date).weekday()
+    return wd not in plan_days_by_weekday
+
+
+def _nutrition_status(n, targets):
+    """
+    Python port of deriveNutStatus() in NutritionModals.jsx.
+    n: dict row from nutrition_log, or None
+    targets: dict from nutrition_targets (calories, protein_g, carbs_g, fat_g), or None
+
+    Returns one of: None, 'hit', 'partial', 'off', 'missed'
+    """
+    if not n:
+        return None
+
+    if n.get("notes") == _NUTRITION_OFF_PLAN_SENTINEL:
+        return "missed"
+
+    cal  = n.get("calories")
+    prot = n.get("protein_g")
+    carb = n.get("carbs_g")
+    fat  = n.get("fat_g")
+
+    has_any = any(v is not None and v > 0 for v in (cal, prot, carb, fat))
+    if not has_any:
+        return None
+
+    if not targets or not targets.get("calories"):
+        filled = sum(1 for v in (cal, prot, carb, fat) if v is not None and v > 0)
+        if filled == 4:
+            return "hit"
+        if filled > 0:
+            return "partial"
+        return "off"
+
+    cal  = cal or 0
+    prot = prot or 0
+    t_cal  = targets.get("calories") or 0
+    t_prot = targets.get("protein_g") or 0
+    t_carb = targets.get("carbs_g") or 0
+    t_fat  = targets.get("fat_g") or 0
+
+    if t_cal > 0 and cal < t_cal * 0.40:
+        return "missed"
+
+    cal_ok  = (cal  >= t_cal  * 0.95) if t_cal  > 0 else True
+    prot_ok = (prot >= t_prot * 0.95) if t_prot > 0 else True
+    carb_ok = ((carb or 0) >= t_carb * 0.90) if t_carb > 0 else True
+    fat_ok  = ((fat  or 0) >= t_fat  * 0.85) if t_fat  > 0 else True
+
+    filled = sum(1 for v in (cal, prot, carb, fat) if v is not None and v > 0)
+
+    if cal_ok and prot_ok and carb_ok and fat_ok and filled == 4:
+        return "hit"
+    if t_cal > 0 and cal < t_cal * 0.70:
+        return "off"
+    return "partial"
 
 
 def compute_streak():
     """
-    Counts consecutive days where workout_done=1 going back from today.
-    Returns integer streak count.
+    Returns the current streak length (int), using the same definition
+    as the dashboard:
+
+      streak day = workout done (non-missed/rest) AND nutrition status == 'hit'
+      planned rest day = counts only if nutrition status == 'hit'
+
+    Walks backward from today. Today is allowed to be incomplete and is
+    skipped once if it doesn't qualify. The first non-qualifying PAST day
+    ends the streak.
     """
-    conn = get_conn()
-    rows = conn.execute("""
-        SELECT date, workout_done FROM daily_summary
-        ORDER BY date DESC
-    """).fetchall()
-    conn.close()
+    plan = get_active_plan()
+    targets = get_active_nutrition_targets()
+
+    plan_days_by_weekday = {}
+    if plan:
+        for pd in get_plan_days(plan["id"]):
+            wd = _DAY_NAME_TO_WEEKDAY.get((pd.get("day_name") or "").lower())
+            if wd is not None:
+                plan_days_by_weekday[wd] = pd
+
+    workouts = get_workouts(days=120)
+    nutrition = get_nutrition(days=120)
+
+    w_map = {w["date"]: w for w in workouts}
+    n_map = {n["date"]: n for n in nutrition}
 
     streak = 0
-    today = date.today()
-    for row in rows:
-        row_date = date.fromisoformat(row["date"])
-        expected = today - timedelta(days=streak)
-        if row_date == expected and row["workout_done"]:
+    d = date.today()
+
+    for i in range(120):
+        iso = d.isoformat()
+        is_rest = _is_planned_rest_day(iso, plan_days_by_weekday)
+        nut_status = _nutrition_status(n_map.get(iso), targets)
+        nut_hit = nut_status == "hit"
+        w = w_map.get(iso)
+        w_session = (w.get("session_type") or "").lower() if w else None
+
+        # i==0 (today) gets a pass ONLY if NOTHING has been logged yet for
+        # today (no nutrition status at all, and no workout row). If the
+        # athlete explicitly logged a 'missed' nutrition day or a 'missed'
+        # workout for today, that's a completed, deliberate failure and
+        # must break the streak immediately — it is NOT "day not over yet".
+        today_untouched = (i == 0 and nut_status is None and w_session is None)
+
+        if is_rest:
+            if nut_hit:
+                streak += 1
+                d = d - timedelta(days=1)
+                continue
+            if today_untouched:
+                d = d - timedelta(days=1)
+                continue  # today not started yet — skip
+            break  # rest day without nutrition hit ends the streak
+
+        workout_done = bool(w_session and w_session not in _NON_TRAINING_SESSION_TYPES)
+
+        if workout_done and nut_hit:
             streak += 1
+            d = d - timedelta(days=1)
+        elif today_untouched:
+            d = d - timedelta(days=1)
+            continue  # today not started yet — skip
         else:
-            break
+            break  # day failed (or explicit 'missed' logged today) — streak ends
+
     return streak
+
 
 def get_exercise_history_aliases(
     aliases,

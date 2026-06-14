@@ -226,18 +226,12 @@ def write_today():
     # Streak
     streak = mm.compute_streak()
 
-    # Today's summary row if exists
-    summaries = mm.get_daily_summaries(days=1)
-    today_summary = summaries[0] if summaries else None
-    coach_note = today_summary["coach_note"] if today_summary and today_summary["coach_note"] else "None"
-
     content = f"""# Today — {date.today().strftime('%A %d %B %Y')}
 - Yesterday workout: {yesterday_str}
 - Yesterday nutrition: {nutrition_str}
 - Current weight: {weight_str}
 - Weight trend: {trend_str}
 - Streak: {streak} days on plan
-- Coach note: {coach_note}
 """
     write("TODAY.md", content)
 

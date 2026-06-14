@@ -17,7 +17,7 @@ export default function FloatingChat() {
         </div>
       )}
       <button className={styles.fab} onClick={() => setOpen(o => !o)} title="Chat with Fahim">
-        {open ? '✕' : '⚡'}
+        {open ? '✕' : '🔩'}
       </button>
     </>
   )

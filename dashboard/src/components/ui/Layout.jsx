@@ -17,7 +17,7 @@ export default function Layout({ children }) {
   return (
     <div className={styles.shell}>
       <nav className={styles.nav}>
-        <span className={styles.logo}>$<span>fahim</span>.coach</span>
+        <span className={styles.logo}>$<span>Coach</span>.Fahim</span>
         <div className={styles.links}>
           {NAV_LINKS.map(l => (
             <NavLink
