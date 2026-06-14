@@ -13,3 +13,7 @@ api/.venv/
 
 # Ignore node_modules if you have them in your frontend folder
 **/node_modules/
+
+# Ignore all __pycache__ folders and .pyc files anywhere in the project
+**/__pycache__/
+*.pyc
