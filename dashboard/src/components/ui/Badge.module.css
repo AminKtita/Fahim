@@ -1,0 +1,14 @@
+.badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.neutral  { background: var(--surface2); color: var(--muted);  border: 1px solid var(--border); }
+.positive { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
+.info     { background: var(--blue-bg);   color: var(--blue);   border: 1px solid var(--blue-border); }
+.warning  { background: var(--warn-bg);   color: var(--warn);   border: 1px solid var(--warn-border); }
+.danger   { background: #1a0000; color: var(--danger); border: 1px solid #3a1010; }

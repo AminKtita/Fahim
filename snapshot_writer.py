@@ -4,6 +4,16 @@ from datetime import date, timedelta
 
 MEMORY_DIR = os.path.join(os.path.dirname(__file__), "memory")
 
+# Session types that represent "no real training happened" — these are
+# logged via the dashboard's day-status feature and must never be treated
+# as real exercise sessions in any snapshot.
+NON_TRAINING_SESSION_TYPES = {"missed", "rest"}
+
+# Sentinel stored in nutrition_log.notes when the day was logged via the
+# dashboard's "off-plan / cheat day" status — i.e. the athlete ate, but
+# didn't follow the diet and nothing was tracked.
+NUTRITION_OFF_PLAN_SENTINEL = "__MISSED__"
+
 
 def ensure_memory_dir():
     os.makedirs(MEMORY_DIR, exist_ok=True)
@@ -29,17 +39,52 @@ def write_profile():
     current_weight = metrics["weight_kg"] if metrics else p["weight_start_kg"]
     injuries = ", ".join(p["injuries"]) if p["injuries"] else "None"
 
+    # Body measurements block — only shown if data exists
+    measurements_lines = []
+    if metrics:
+        fields = [
+            ("Body fat",  metrics.get("body_fat_pct"), "%"),
+            ("Waist",     metrics.get("waist_cm"),     "cm"),
+            ("Chest",     metrics.get("chest_cm"),     "cm"),
+            ("Hips",      metrics.get("hips_cm"),      "cm"),
+            ("Arm",       metrics.get("arm_cm"),       "cm"),
+            ("Thigh",     metrics.get("thigh_cm"),     "cm"),
+        ]
+        for label, value, unit in fields:
+            if value is not None:
+                measurements_lines.append(f"  {label}: {value} {unit}")
+
+    measurements_block = ""
+    if measurements_lines:
+        measurements_block = (
+            f"\n## Latest Measurements (as of {metrics['date']})\n"
+            + "\n".join(measurements_lines)
+        )
+
+    # Weight trend summary
+    trend = mm.get_weight_trend(days=30)
+    if len(trend) >= 2:
+        delta = round(trend[-1]["weight_kg"] - trend[0]["weight_kg"], 2)
+        direction = "+" if delta > 0 else ""
+        trend_str = f"{direction}{delta} kg over last 30 days"
+    else:
+        trend_str = "Not enough data"
+
     content = f"""# Athlete Profile
+## Identity
 - Name: {p['name']} | Age: {p['age']} | Sex: {p['sex']}
 - Height: {p['height_cm']} cm
 - Start weight: {p['weight_start_kg']} kg | Current weight: {current_weight} kg
+- Weight trend: {trend_str}
+
+## Training
 - Goal: {p['goal_type']}
 - Activity level: {p['activity_level']}
 - Injuries / limitations: {injuries}
+{measurements_block}
 - Last updated: {date.today().isoformat()}
 """
     write("PROFILE.md", content)
-
 
 # ─────────────────────────────────────────
 #  GOALS.md  (~150 tokens, always injected)
@@ -77,6 +122,80 @@ def write_goals():
 #  TODAY.md  (~300 tokens, injected every session)
 # ─────────────────────────────────────────
 
+def _format_yesterday_workout(yesterday_workout):
+    """
+    Renders the "Yesterday workout: ..." line.
+
+    Handles three cases:
+    - Real session with logged sets      -> "Push day ✓ | bench_press: ..."
+    - Logged as 'missed' (plan existed,
+      athlete skipped the session)       -> "Missed planned session ✗"
+    - Logged as 'rest' (deliberate
+      rest day, no session planned)      -> "Rest day (planned) ○"
+    - No row at all for that date        -> "Rest day / not logged"
+    """
+    if not yesterday_workout:
+        return "Rest day / not logged"
+
+    session_type = (yesterday_workout["session_type"] or "").lower()
+
+    if session_type == "missed":
+        return "Missed planned session ✗ — no training done"
+
+    if session_type == "rest":
+        return "Rest day (planned) ○"
+
+    sets = mm.get_sets_for_workout(yesterday_workout["id"])
+    exercise_summary = {}
+    for s in sets:
+        if s["is_warmup"]:
+            continue
+        ex = s["exercise"]
+        if ex not in exercise_summary:
+            exercise_summary[ex] = s
+        else:
+            if (s["weight_kg"] or 0) > (exercise_summary[ex]["weight_kg"] or 0):
+                exercise_summary[ex] = s
+
+    if not exercise_summary:
+        # Session row exists but has no working sets logged — don't claim "✓"
+        return f"{yesterday_workout['session_type'].title()} day (no sets logged)"
+
+    set_lines = [f"{ex}: {s['weight_kg']}kg × {s['reps']} reps" for ex, s in exercise_summary.items()]
+    return f"{yesterday_workout['session_type'].title()} day ✓ | " + " | ".join(set_lines)
+
+
+def _format_yesterday_nutrition(yesterday_nutrition):
+    """
+    Renders the "Yesterday nutrition: ..." line.
+
+    Handles three cases:
+    - Real macros logged                 -> "2400 kcal | 150g protein | ..."
+    - Logged as off-plan / cheat day
+      (notes == '__MISSED__', all
+      macro fields NULL)                 -> "Off-plan day (not tracked — cheat day, no diet followed)"
+    - No row at all for that date        -> "Not logged"
+    """
+    if not yesterday_nutrition:
+        return "Not logged"
+
+    if (yesterday_nutrition.get("notes") == NUTRITION_OFF_PLAN_SENTINEL
+            and yesterday_nutrition.get("calories") is None):
+        return "Off-plan day (not tracked — cheat day, no diet followed)"
+
+    if yesterday_nutrition.get("calories") is None:
+        # Row exists but has no macro data and isn't the off-plan sentinel —
+        # treat the same as "not logged" rather than printing "None kcal".
+        return "Not logged"
+
+    return (
+        f"{yesterday_nutrition['calories']} kcal | "
+        f"{yesterday_nutrition['protein_g']}g protein | "
+        f"{yesterday_nutrition['carbs_g']}g carbs | "
+        f"{yesterday_nutrition['fat_g']}g fat"
+    )
+
+
 def write_today():
     today     = date.today().isoformat()
     yesterday = (date.today() - timedelta(days=1)).isoformat()
@@ -84,44 +203,12 @@ def write_today():
     # Yesterday's workout
     recent = mm.get_workouts(days=2)
     yesterday_workout = next((w for w in recent if w["date"] == yesterday), None)
-
-    if yesterday_workout:
-        sets = mm.get_sets_for_workout(yesterday_workout["id"])
-        # summarize: group by exercise, show top set
-        exercise_summary = {}
-        for s in sets:
-            if s["is_warmup"]:
-                continue
-            ex = s["exercise"]
-            if ex not in exercise_summary:
-                exercise_summary[ex] = s
-            else:
-                # keep heaviest set
-                if (s["weight_kg"] or 0) > (exercise_summary[ex]["weight_kg"] or 0):
-                    exercise_summary[ex] = s
-
-        set_lines = []
-        for ex, s in exercise_summary.items():
-            set_lines.append(f"{ex}: {s['weight_kg']}kg × {s['reps']} reps")
-        yesterday_str = (
-            f"{yesterday_workout['session_type'].title()} day ✓ | "
-            + " | ".join(set_lines)
-        )
-    else:
-        yesterday_str = "Rest day / not logged"
+    yesterday_str = _format_yesterday_workout(yesterday_workout)
 
     # Yesterday's nutrition
     nutrition_recent = mm.get_nutrition(days=2)
     yesterday_nutrition = next((n for n in nutrition_recent if n["date"] == yesterday), None)
-    if yesterday_nutrition:
-        nutrition_str = (
-            f"{yesterday_nutrition['calories']} kcal | "
-            f"{yesterday_nutrition['protein_g']}g protein | "
-            f"{yesterday_nutrition['carbs_g']}g carbs | "
-            f"{yesterday_nutrition['fat_g']}g fat"
-        )
-    else:
-        nutrition_str = "Not logged"
+    nutrition_str = _format_yesterday_nutrition(yesterday_nutrition)
 
     # Current weight
     metrics = mm.get_latest_metrics()
@@ -169,6 +256,21 @@ def write_current_week():
         return
 
     for w in workouts:
+        session_type = (w["session_type"] or "").lower()
+
+        # Render missed/rest days as short status lines, not training sessions
+        if session_type == "missed":
+            lines.append(f"\n## {w['date']} — Missed planned session ✗")
+            if w["notes"]:
+                lines.append(f"  Notes: {w['notes']}")
+            continue
+
+        if session_type == "rest":
+            lines.append(f"\n## {w['date']} — Rest day (planned) ○")
+            if w["notes"]:
+                lines.append(f"  Notes: {w['notes']}")
+            continue
+
         lines.append(f"\n## {w['date']} — {w['session_type'].title()}")
         if w["duration_min"]:
             lines.append(f"Duration: {w['duration_min']} min | RPE: {w['perceived_effort']}/10")
@@ -197,7 +299,59 @@ def write_current_week():
 
     write("CURRENT_WEEK.md", "\n".join(lines))
 
+def write_plan():
+    plan = mm.get_active_plan()
+    if not plan:
+        write("PLAN.md", "# Training Plan\nNo active plan set yet.")
+        return
 
+    days = mm.get_plan_days(plan["id"])
+    targets = mm.get_active_nutrition_targets()
+
+    from datetime import date as dt
+    today = dt.today().isoformat()
+
+    # Weeks into mesocycle
+    start = plan["start_date"]
+    try:
+        from datetime import date as d
+        delta = (d.fromisoformat(today) - d.fromisoformat(start)).days
+        week_number = max(1, (delta // 7) + 1)
+    except Exception:
+        week_number = "?"
+
+    lines = [
+        f"# Training Plan — {plan['name']}",
+        f"- Split: {plan['split_type']} | {plan['days_per_week']} days/week",
+        f"- Mesocycle: {plan['mesocycle_number']} | Week {week_number} of 6",
+        f"- Started: {plan['start_date']} | Ends: {plan['end_date']}",
+        f"- Deload every: {plan['deload_week']} weeks",
+    ]
+
+    if targets:
+        lines.append(f"\n## Nutrition Targets")
+        lines.append(f"- Calories: {targets['calories']} kcal")
+        lines.append(f"- Protein: {targets['protein_g']}g | "
+                     f"Carbs: {targets['carbs_g']}g | "
+                     f"Fat: {targets['fat_g']}g")
+
+    for day in days:
+        lines.append(f"\n## {day['day_name'].title()} — {day['session_type'].title()}")
+        exercises = mm.get_plan_exercises(day["id"])
+        for ex in exercises:
+            line = f"  {ex['exercise']}: {ex['sets']}×{ex['reps']}"
+            if ex["rir"] is not None:
+                line += f" RIR {ex['rir']}"
+            if ex["progression_rule"]:
+                line += f" | {ex['progression_rule']}"
+            lines.append(line)
+
+    if plan["notes"]:
+        lines.append(f"\n## Notes\n{plan['notes']}")
+
+    write("PLAN.md", "\n".join(lines))
+
+    
 # ─────────────────────────────────────────
 #  RECENT_PROGRESS.md  (~400 tokens, progress queries)
 # ─────────────────────────────────────────
@@ -217,29 +371,46 @@ def write_recent_progress():
         lines.append(f"- Latest: {end_w} kg")
         lines.append(f"- Change: {direction} {abs(delta)} kg over {len(trend)} weigh-ins")
 
-    # Workout frequency
-    workouts = mm.get_workouts(days=30)
+    # Workout frequency — split real training sessions from missed/rest days
+    all_workouts = mm.get_workouts(days=30)
+    real_workouts = [w for w in all_workouts if (w["session_type"] or "").lower() not in NON_TRAINING_SESSION_TYPES]
+    missed_count  = sum(1 for w in all_workouts if (w["session_type"] or "").lower() == "missed")
+    rest_count    = sum(1 for w in all_workouts if (w["session_type"] or "").lower() == "rest")
+
     lines.append(f"\n## Training Volume")
-    lines.append(f"- Sessions in last 30 days: {len(workouts)}")
-    if workouts:
+    lines.append(f"- Sessions in last 30 days: {len(real_workouts)}")
+    if real_workouts:
         types = {}
-        for w in workouts:
+        for w in real_workouts:
             t = w["session_type"]
             types[t] = types.get(t, 0) + 1
         breakdown = " | ".join(f"{k}: {v}x" for k, v in types.items())
         lines.append(f"- Breakdown: {breakdown}")
+    if missed_count:
+        lines.append(f"- Missed planned sessions: {missed_count}")
+    if rest_count:
+        lines.append(f"- Planned rest days: {rest_count}")
 
-    # Nutrition averages
+    # Nutrition averages — off-plan/cheat days are excluded from the average
+    # but reported separately so the model knows they happened.
     nutrition = mm.get_nutrition(days=30)
     lines.append(f"\n## Nutrition (last 30 days)")
     if nutrition:
-        logged_days = [n for n in nutrition if n["calories"]]
+        logged_days = [n for n in nutrition if n["calories"] is not None]
+        off_plan_days = [
+            n for n in nutrition
+            if n["calories"] is None and n.get("notes") == NUTRITION_OFF_PLAN_SENTINEL
+        ]
         if logged_days:
             avg_cal  = round(sum(n["calories"] for n in logged_days) / len(logged_days))
             avg_prot = round(sum(n["protein_g"] for n in logged_days if n["protein_g"]) / len(logged_days), 1)
             lines.append(f"- Days logged: {len(logged_days)}")
             lines.append(f"- Avg calories: {avg_cal} kcal/day")
             lines.append(f"- Avg protein: {avg_prot} g/day")
+        if off_plan_days:
+            lines.append(f"- Off-plan / cheat days (not tracked): {len(off_plan_days)}")
+        if not logged_days and not off_plan_days:
+            lines.append("- No nutrition data logged")
     else:
         lines.append("- No nutrition data logged")
 
@@ -262,9 +433,24 @@ def write_recent_progress():
 
 def write_history_index():
     workouts = mm.get_workouts(days=90)
+    real_workouts = [w for w in workouts if (w["session_type"] or "").lower() not in NON_TRAINING_SESSION_TYPES]
+    skipped = [w for w in workouts if (w["session_type"] or "").lower() in NON_TRAINING_SESSION_TYPES]
+
     lines = [f"# Workout History Index — last 90 days"]
-    lines.append(f"Total sessions: {len(workouts)}\n")
-    for w in workouts:
+    lines.append(f"Total sessions: {len(real_workouts)}")
+    if skipped:
+        missed_count = sum(1 for w in skipped if (w["session_type"] or "").lower() == "missed")
+        rest_count   = sum(1 for w in skipped if (w["session_type"] or "").lower() == "rest")
+        extra = []
+        if missed_count:
+            extra.append(f"{missed_count} missed")
+        if rest_count:
+            extra.append(f"{rest_count} planned rest")
+        if extra:
+            lines.append(f"({' | '.join(extra)} — not counted as sessions)")
+    lines.append("")
+
+    for w in real_workouts:
         lines.append(f"- {w['date']}: {w['session_type']} (id:{w['id']})")
 
     write("HISTORY_INDEX.md", "\n".join(lines))
@@ -282,6 +468,7 @@ def update_all():
     write_current_week()
     write_recent_progress()
     write_history_index()
+    write_plan()
     print(f"[+] Memory snapshots updated — {date.today().isoformat()}")
 
 

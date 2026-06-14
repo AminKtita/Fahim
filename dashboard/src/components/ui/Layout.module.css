@@ -1,0 +1,70 @@
+.shell { min-height: 100vh; display: flex; flex-direction: column; }
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.logo span { color: var(--muted); }
+
+.links {
+  display: flex;
+  gap: 2px;
+}
+
+.link {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+.link:hover { color: var(--text); background: var(--surface2); }
+.link.active { color: var(--text); }
+
+.statusPill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.green  { background: var(--accent); }
+.yellow { background: var(--warn); }
+.blue   { background: var(--blue); }
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 9px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.main { flex: 1; }

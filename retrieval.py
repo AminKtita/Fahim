@@ -1,4 +1,3 @@
-import re
 import memory_manager as mm
 
 EXERCISE_ALIASES = {
@@ -26,7 +25,15 @@ EXERCISE_ALIASES = {
         "ohp",
         "overhead press",
         "military press"
-    ]
+    ],
+
+    "pull up":       ["pull up", "pullup", "chin up", "chinup"],
+    "row":           ["barbell row", "bent over row", "cable row", "db row"],
+    "dip":           ["dip", "chest dip", "tricep dip"],
+    "curl":          ["curl", "bicep curl", "barbell curl", "dumbbell curl"],
+    "leg press":     ["leg press"],
+    "lunge":         ["lunge", "walking lunge"],
+    "hip thrust":    ["hip thrust", "glute bridge"],
 }
 
 def extract_exercise(text):
@@ -40,30 +47,31 @@ def extract_exercise(text):
     return None
 
 def get_exercise_context(user_message):
-
     exercise = extract_exercise(user_message)
-
     if not exercise:
         return ""
 
     rows = mm.get_exercise_history_aliases(
-    EXERCISE_ALIASES[exercise],
-    limit=30
-)
-
+        EXERCISE_ALIASES[exercise], limit=30
+    )
     if not rows:
         return ""
 
-    lines = [
-        f"# Exercise History: {exercise}"
-    ]
-
+    # Group by date — show last 6 sessions cleanly
+    sessions = {}
     for row in rows:
-        lines.append(
-            f"{row['date']} | "
-            f"{row['weight_kg']}kg x "
-            f"{row['reps']}"
+        d = row["date"]
+        sessions.setdefault(d, []).append(row)
+
+    lines = [f"# Exercise History: {exercise}"]
+    for session_date in list(sessions.keys())[:6]:
+        sets = sessions[session_date]
+        set_str = " | ".join(
+            f"{s['weight_kg']}kg×{s['reps']}"
+            + (f"@{s['rpe']}RPE" if s["rpe"] else "")
+            for s in sets
         )
+        lines.append(f"{session_date}: {set_str}")
 
     return "\n".join(lines)
 

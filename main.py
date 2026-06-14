@@ -23,6 +23,8 @@ import snapshot_writer
 from context_builder import build_context, build_system_prompt, detect_intent
 from log_workout import log_workout_interactive
 from log_nutrition import log_nutrition_interactive
+from log_metrics import log_metrics_interactive
+
 
 # ─────────────────────────────────────────
 #  CONFIG
@@ -108,6 +110,46 @@ def handle_log_data(log_data: dict) -> str | None:
                 status        = log_data.get("status")
             )
             return "[saved] goal updated"
+        elif log_type == "plan":
+            plan_id = mm.save_plan(
+                name             = log_data.get("name", "AI Generated Plan"),
+                split_type       = log_data.get("split_type", "PPL"),
+                days_per_week    = log_data.get("days_per_week", 4),
+                start_date       = log_data.get("start_date", today),
+                deload_week      = log_data.get("deload_week", 6),
+                mesocycle_number = log_data.get("mesocycle_number", 1),
+                notes            = log_data.get("notes")
+            )
+
+            for day in log_data.get("days", []):
+                day_id = mm.save_plan_day(
+                    plan_id      = plan_id,
+                    day_name     = day["day_name"],
+                    session_type = day["session_type"],
+                    order_index  = day["order_index"]
+                )
+                for i, ex in enumerate(day.get("exercises", []), 1):
+                    mm.save_plan_exercise(
+                        plan_day_id      = day_id,
+                        exercise         = ex["exercise"],
+                        sets             = ex["sets"],
+                        reps             = ex["reps"],
+                        rir              = ex.get("rir"),
+                        progression_rule = ex.get("progression_rule"),
+                        order_index      = i
+                    )
+
+            targets = log_data.get("nutrition_targets")
+            if targets:
+                mm.save_nutrition_targets(
+                    plan_id   = plan_id,
+                    calories  = targets["calories"],
+                    protein_g = targets["protein_g"],
+                    carbs_g   = targets["carbs_g"],
+                    fat_g     = targets["fat_g"]
+                )
+
+            return f"[saved] training plan logged — {log_data.get('name')}"
 
         else:
             return f"[!] Unknown log type: '{log_type}' — not saved"
@@ -122,11 +164,11 @@ def handle_log_data(log_data: dict) -> str | None:
 
 def print_banner():
     print("\n" + "═" * 52)
-    print("  FitCoach — Local AI Fitness Coach")
+    print("  Fahim — Local AI Fitness Coach")
     print(f"  {date.today().strftime('%A, %d %B %Y')}")
     print("═" * 52)
     print("  Commands: 'quit'  'refresh'  'debug'")
-    print("            'workout'  'nutrition'")
+    print("            'workout'  'nutrition'  'metrics'")
     print("═" * 52 + "\n")
 
 
@@ -150,6 +192,12 @@ def print_saved(msg: str):
 def print_error(msg: str):
     print(f"\033[91m{msg}\033[0m")
 
+def print_thinking(thinking: str):
+    print("\n\033[90m━━━ thinking ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    for line in thinking.split('\n'):
+        if line.strip():
+            print(f"\033[90m  {line.strip()}")
+    print("\033[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n")
 
 # ─────────────────────────────────────────
 #  CONVERSATION HISTORY MANAGER
@@ -167,6 +215,8 @@ def trim_history(history: List[Dict], max_turns: int = MAX_HISTORY) -> List[Dict
 # ─────────────────────────────────────────
 
 def main():
+    import scheduler
+    scheduler.run_daily_job()
     # 1. Check Ollama is running
     if not ollama.healthcheck():
         print_error(
@@ -235,6 +285,13 @@ def main():
             snapshot_writer.update_all()
             print_saved("[+] Nutrition saved and memory refreshed.")
             continue
+        
+        if user_input.lower() == "metrics":
+            log_metrics_interactive()
+            snapshot_writer.update_all()
+            print_saved("[+] Measurements saved and memory refreshed.")
+            continue
+
 
         # ── BUILD CONTEXT ──
         context, intent = build_context(user_input)
@@ -249,14 +306,12 @@ def main():
                 user_message  = user_input,
                 system_prompt = system_prompt,
                 history       = history,
-                stream        = True,    # streams tokens as they arrive
+                stream        = True,
             )
         except ollama.OllamaError as e:
             print_error(f"Model error: {e}")
             continue
 
-        # ── DISPLAY RESPONSE ──
-        print_coach(result.text)
 
         # ── HANDLE LOG DATA ──
         if result.log_data:

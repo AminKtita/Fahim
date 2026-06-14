@@ -1,0 +1,201 @@
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--faint);
+  margin-bottom: 6px;
+}
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.pageSub {
+  font-size: 12px;
+  color: var(--faint);
+}
+.formWrap { border-bottom: 1px solid var(--border); }
+
+/* GRID */
+.goalsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.emptyCard {
+  background: var(--surface);
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+.emptyMono { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.emptySub  { font-size: 11px; color: var(--faint); }
+
+/* GOAL CARD */
+.goalCard {
+  background: var(--surface);
+  padding: 20px 22px;
+}
+
+.cardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.goalTitle { font-size: 14px; font-weight: 600; color: var(--text); }
+
+.goalPct { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.pctAccent { color: var(--accent); }
+.pctBlue   { color: var(--blue);   }
+.pctWarn   { color: var(--warn);   }
+
+.barTrack {
+  height: 3px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 9px;
+}
+.barFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.barAccent { background: var(--accent); }
+.barBlue   { background: var(--blue);   }
+.barWarn   { background: var(--warn);   }
+
+.cardDetail {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+.detailVal {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.deadline { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+.deadlineWarn { color: var(--warn); }
+
+/* ACTIONS */
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.cardActions button {
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.progressRow button { padding: 5px 12px; font-size: 10px; }
+
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius-sm);
+}
+.confirmText {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--warn);
+  flex: 1;
+}
+.confirmRow button { padding: 4px 10px; font-size: 10px; }
+
+/* EDIT FORM */
+.editForm { }
+.editGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.editRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.editRow:last-child { margin-bottom: 0; }
+.editLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.editForm .cardActions { margin-top: 4px; }
+
+/* ARCHIVE */
+.archiveRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.archiveRow:last-child { border-bottom: none; }
+.archiveLeft  { display: flex; align-items: center; gap: 10px; }
+.archiveRight { display: flex; align-items: center; gap: 10px; }
+
+.archiveBadge {
+  font-family: var(--mono);
+  font-size: 10px;
+  width: 20px;
+  text-align: center;
+}
+.badgeGreen { color: var(--accent); }
+.badgeWarn  { color: var(--faint);  }
+
+.archiveTitle { font-size: 13px; color: var(--muted); }
+.archiveMeta  { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+.archiveDate  { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+
+/* completed card variant */
+.goalCardCompleted {
+  background: var(--surface);
+  border-left: 2px solid var(--accent-border);
+  opacity: 0.85;
+}
+.goalCardCompleted:hover { opacity: 1; }
+
+.completedBadge {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}

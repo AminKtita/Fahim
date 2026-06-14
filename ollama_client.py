@@ -20,6 +20,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import requests
 
+## for Dockeer : http://host.docker.internal:11434
+
 DEFAULT_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "Agen/gemma-4-26B-A4B-it-uncensored-heretic")
 DEFAULT_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "120"))
@@ -47,6 +49,7 @@ class ChatResult:
     text: str
     raw: Dict[str, Any]
     log_data: Optional[Dict[str, Any]] = None
+    thinking: Optional[str] = None
 
 
 def _merge_options(options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -138,26 +141,62 @@ def chat(
         "messages": messages,
         "options": _merge_options(options),
         "stream": stream,
+        "think": True,
     }
 
     if not stream:
         data = _post("/api/chat", payload, timeout=timeout)
         message = data.get("message") or {}
+                
         text = (message.get("content") or "").strip()
+        thinking = (message.get("thinking") or "").strip() or None
         clean_text, log_data = extract_log_data(text)
-        return ChatResult(text=clean_text, raw=data, log_data=log_data)
+        return ChatResult(text=clean_text, raw=data,
+                        log_data=log_data, thinking=thinking)
+    
 
     parts: List[str] = []
+    think_parts: List[str] = []
     raw_events: List[Dict[str, Any]] = []
+    thinking_started = False
+    reply_started    = False
     for event in _post_stream("/api/chat", payload, timeout=timeout):
         raw_events.append(event)
-        chunk = event.get("message", {}).get("content")
+        msg         = event.get("message", {})
+        chunk       = msg.get("content", "")
+        think_chunk = msg.get("thinking", "")
+
+        # ── THINKING STREAM ──
+        if think_chunk:
+            if not thinking_started:
+                # Print thinking header once
+                print("\n\033[90m━━━ thinking ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                thinking_started = True
+            # Print each thinking token live as it arrives
+            print(f"\033[90m{think_chunk}\033[0m", end="", flush=True)
+            think_parts.append(think_chunk)
+
+        # ── REPLY STREAM ──
         if chunk:
+            if not reply_started:
+                # Close thinking block and open reply block
+                if thinking_started:
+                    print("\n\033[90m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m")
+                print(f"\n\033[96mCoach:\033[0m ", end="", flush=True)
+                reply_started = True
+            # Print each reply token live
+            print(chunk, end="", flush=True)
             parts.append(chunk)
 
-    text = "".join(parts).strip()
+    # Final newline after streamed reply
+    if reply_started:
+        print("\n")
+
+    text     = "".join(parts).strip()
+    thinking = "".join(think_parts).strip() or None
     clean_text, log_data = extract_log_data(text)
-    return ChatResult(text=clean_text, raw={"events": raw_events}, log_data=log_data)
+    return ChatResult(text=clean_text, raw={"events": raw_events},
+                      log_data=log_data, thinking=thinking)
 
 
 def generate(

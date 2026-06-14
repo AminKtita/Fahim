@@ -7,8 +7,9 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "db", "fitness.db")
 
 
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # lets you access columns by name
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     return conn
 
 
@@ -356,3 +357,101 @@ def get_exercise_history_aliases(
     conn.close()
 
     return [dict(r) for r in rows]
+
+
+# ─────────────────────────────────────────
+#  TRAINING PLAN
+# ─────────────────────────────────────────
+
+def save_plan(name, split_type, days_per_week, start_date,
+              deload_week=6, mesocycle_number=1, notes=None):
+    conn = get_conn()
+    conn.execute("UPDATE training_plan SET is_active=0")
+    cursor = conn.execute("""
+        INSERT INTO training_plan
+            (name, split_type, days_per_week, mesocycle_number,
+             start_date, end_date, deload_week, notes, is_active, created_at)
+        VALUES (?, ?, ?, ?, ?, date(?, '+42 days'), ?, ?, 1, ?)
+    """, (name, split_type, days_per_week, mesocycle_number,
+          start_date, start_date, deload_week, notes, start_date))
+    plan_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return plan_id
+
+
+def save_plan_day(plan_id, day_name, session_type, order_index):
+    conn = get_conn()
+    cursor = conn.execute("""
+        INSERT INTO plan_days (plan_id, day_name, session_type, order_index)
+        VALUES (?, ?, ?, ?)
+    """, (plan_id, day_name, session_type, order_index))
+    day_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return day_id
+
+
+def save_plan_exercise(plan_day_id, exercise, sets, reps,
+                       rir=None, progression_rule=None,
+                       notes=None, order_index=0):
+    conn = get_conn()
+    conn.execute("""
+        INSERT INTO plan_exercises
+            (plan_day_id, exercise, sets, reps, rir,
+             progression_rule, notes, order_index)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (plan_day_id, exercise, sets, reps, rir,
+          progression_rule, notes, order_index))
+    conn.commit()
+    conn.close()
+
+
+def save_nutrition_targets(plan_id, calories, protein_g, carbs_g, fat_g):
+    conn = get_conn()
+    conn.execute("UPDATE nutrition_targets SET is_active=0")
+    conn.execute("""
+        INSERT INTO nutrition_targets
+            (plan_id, calories, protein_g, carbs_g, fat_g, is_active)
+        VALUES (?, ?, ?, ?, ?, 1)
+    """, (plan_id, calories, protein_g, carbs_g, fat_g))
+    conn.commit()
+    conn.close()
+
+
+def get_active_plan():
+    conn = get_conn()
+    row = conn.execute("""
+        SELECT * FROM training_plan WHERE is_active=1 LIMIT 1
+    """).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_plan_days(plan_id):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT * FROM plan_days WHERE plan_id=?
+        ORDER BY order_index
+    """, (plan_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_plan_exercises(plan_day_id):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT * FROM plan_exercises WHERE plan_day_id=?
+        ORDER BY order_index
+    """, (plan_day_id,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def get_active_nutrition_targets():
+    conn = get_conn()
+    row = conn.execute("""
+        SELECT * FROM nutrition_targets WHERE is_active=1 LIMIT 1
+    """).fetchone()
+    conn.close()
+    return dict(row) if row else None

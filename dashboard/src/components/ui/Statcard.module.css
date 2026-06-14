@@ -1,0 +1,39 @@
+.card {
+  background: var(--surface);
+  padding: 16px 20px;
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 6px;
+}
+
+.value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.unit {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 3px;
+}
+
+.sub {
+  font-size: 10px;
+  margin-top: 5px;
+  font-family: var(--mono);
+}
+
+.neutral { color: var(--muted); }
+.positive { color: var(--accent); }
+.warning  { color: var(--warn); }
+.info     { color: var(--blue); }

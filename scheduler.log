@@ -1,0 +1,167 @@
+[2026-06-07 18:32:21] ================================================
+[2026-06-07 18:32:21] Daily job starting ...
+[2026-06-07 18:32:21] ================================================
+[2026-06-07 18:32:21] Computing daily summary for 2026-06-06 ...
+[2026-06-07 18:32:21]   workout_done=False | calories_hit=False | protein_hit=False | streak=0
+[2026-06-07 18:32:21] Checking last 7 days for missing entries ...
+[2026-06-07 18:32:21]   No missing days found.
+[2026-06-07 18:32:21] Syncing goal progress ...
+[2026-06-07 18:32:21] Refreshing memory snapshots ...
+[2026-06-07 18:32:21]   All .md files updated.
+[2026-06-07 18:32:21] Daily job complete.
+[2026-06-07 18:32:21] ================================================
+[2026-06-08 20:27:12] ================================================
+[2026-06-08 20:27:12] Daily job starting ...
+[2026-06-08 20:27:12] ================================================
+[2026-06-08 20:27:12] Computing daily summary for 2026-06-07 ...
+[2026-06-08 20:27:12]   workout_done=False | calories_hit=False | protein_hit=False | streak=0
+[2026-06-08 20:27:12] Checking last 7 days for missing entries ...
+[2026-06-08 20:27:12]   No missing days found.
+[2026-06-08 20:27:12] Syncing goal progress ...
+[2026-06-08 20:27:12] Refreshing memory snapshots ...
+[2026-06-08 20:27:12]   All .md files updated.
+[2026-06-08 20:27:12] Daily job complete.
+[2026-06-08 20:27:12] ================================================
+[2026-06-08 20:30:57] ================================================
+[2026-06-08 20:30:57] Daily job starting ...
+[2026-06-08 20:30:57] ================================================
+[2026-06-08 20:30:57] Computing daily summary for 2026-06-07 ...
+[2026-06-08 20:30:57]   workout_done=False | calories_hit=False | protein_hit=False | streak=0
+[2026-06-08 20:30:57] Checking last 7 days for missing entries ...
+[2026-06-08 20:30:57]   No missing days found.
+[2026-06-08 20:30:57] Syncing goal progress ...
+[2026-06-08 20:30:57] Refreshing memory snapshots ...
+[2026-06-08 20:30:57]   All .md files updated.
+[2026-06-08 20:30:57] Daily job complete.
+[2026-06-08 20:30:57] ================================================
+[2026-06-09 23:07:19] ================================================
+[2026-06-09 23:07:19] Daily job starting ...
+[2026-06-09 23:07:19] ================================================
+[2026-06-09 23:07:19] Computing daily summary for 2026-06-08 ...
+[2026-06-09 23:07:19] [ERROR] compute_daily_summary failed:
+Traceback (most recent call last):
+  File "/app/scheduler.py", line 228, in run_daily_job
+    compute_daily_summary(yesterday)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/app/scheduler.py", line 61, in compute_daily_summary
+    profile = mm.get_profile()
+  File "/app/memory_manager.py", line 47, in get_profile
+    conn = get_conn()
+  File "/app/memory_manager.py", line 12, in get_conn
+    conn.execute("PRAGMA journal_mode=WAL")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: disk I/O error
+
+[2026-06-09 23:07:19] Checking last 7 days for missing entries ...
+[2026-06-09 23:07:19] [ERROR] flag_missing_days failed:
+Traceback (most recent call last):
+  File "/app/scheduler.py", line 233, in run_daily_job
+    flag_missing_days(lookback_days=7)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/app/scheduler.py", line 151, in flag_missing_days
+    summaries = mm.get_daily_summaries(days=lookback_days)
+  File "/app/memory_manager.py", line 287, in get_daily_summaries
+    conn = get_conn()
+  File "/app/memory_manager.py", line 12, in get_conn
+    conn.execute("PRAGMA journal_mode=WAL")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: disk I/O error
+
+[2026-06-09 23:07:19] Syncing goal progress ...
+[2026-06-09 23:07:19] [ERROR] sync_goal_progress failed:
+Traceback (most recent call last):
+  File "/app/scheduler.py", line 238, in run_daily_job
+    sync_goal_progress()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/app/scheduler.py", line 187, in sync_goal_progress
+    goals = mm.get_goals(status="active")
+  File "/app/memory_manager.py", line 249, in get_goals
+    conn = get_conn()
+  File "/app/memory_manager.py", line 12, in get_conn
+    conn.execute("PRAGMA journal_mode=WAL")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: disk I/O error
+
+[2026-06-09 23:07:19] Refreshing memory snapshots ...
+[2026-06-09 23:07:19] [ERROR] refresh_snapshots failed:
+Traceback (most recent call last):
+  File "/app/scheduler.py", line 243, in run_daily_job
+    refresh_snapshots()
+    ~~~~~~~~~~~~~~~~~^^
+  File "/app/scheduler.py", line 212, in refresh_snapshots
+    snapshot_writer.update_all()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/app/snapshot_writer.py", line 366, in update_all
+    write_profile()
+    ~~~~~~~~~~~~~^^
+  File "/app/snapshot_writer.py", line 23, in write_profile
+    p = mm.get_profile()
+  File "/app/memory_manager.py", line 47, in get_profile
+    conn = get_conn()
+  File "/app/memory_manager.py", line 12, in get_conn
+    conn.execute("PRAGMA journal_mode=WAL")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: disk I/O error
+
+[2026-06-09 23:07:19] Daily job complete.
+[2026-06-09 23:07:19] ================================================
+[2026-06-09 23:14:42] ================================================
+[2026-06-09 23:14:42] Daily job starting ...
+[2026-06-09 23:14:42] ================================================
+[2026-06-09 23:14:42] Computing daily summary for 2026-06-08 ...
+[2026-06-09 23:14:42]   workout_done=True | calories_hit=False | protein_hit=False | streak=0
+[2026-06-09 23:14:42] Checking last 7 days for missing entries ...
+[2026-06-09 23:14:42]   No missing days found.
+[2026-06-09 23:14:42] Syncing goal progress ...
+[2026-06-09 23:14:42] Refreshing memory snapshots ...
+[2026-06-09 23:14:42]   All .md files updated.
+[2026-06-09 23:14:42] Daily job complete.
+[2026-06-09 23:14:42] ================================================
+[2026-06-09 23:17:28] ================================================
+[2026-06-09 23:17:28] Daily job starting ...
+[2026-06-09 23:17:28] ================================================
+[2026-06-09 23:17:28] Computing daily summary for 2026-06-08 ...
+[2026-06-09 23:17:28]   workout_done=True | calories_hit=False | protein_hit=False | streak=0
+[2026-06-09 23:17:28] Checking last 7 days for missing entries ...
+[2026-06-09 23:17:28]   No missing days found.
+[2026-06-09 23:17:28] Syncing goal progress ...
+[2026-06-09 23:17:28] Refreshing memory snapshots ...
+[2026-06-09 23:17:28]   All .md files updated.
+[2026-06-09 23:17:28] Daily job complete.
+[2026-06-09 23:17:28] ================================================
+[2026-06-10 10:37:48] ================================================
+[2026-06-10 10:37:48] Daily job starting ...
+[2026-06-10 10:37:48] ================================================
+[2026-06-10 10:37:48] Computing daily summary for 2026-06-09 ...
+[2026-06-10 10:37:48]   workout_done=True | calories_hit=True | protein_hit=True | streak=0
+[2026-06-10 10:37:48] Checking last 7 days for missing entries ...
+[2026-06-10 10:37:48]   No missing days found.
+[2026-06-10 10:37:48] Syncing goal progress ...
+[2026-06-10 10:37:48] Refreshing memory snapshots ...
+[2026-06-10 10:37:48]   All .md files updated.
+[2026-06-10 10:37:48] Daily job complete.
+[2026-06-10 10:37:48] ================================================
+[2026-06-10 10:46:37] ================================================
+[2026-06-10 10:46:37] Daily job starting ...
+[2026-06-10 10:46:37] ================================================
+[2026-06-10 10:46:37] Computing daily summary for 2026-06-09 ...
+[2026-06-10 10:46:37]   workout_done=True | calories_hit=True | protein_hit=True | streak=0
+[2026-06-10 10:46:37] Checking last 7 days for missing entries ...
+[2026-06-10 10:46:37]   No missing days found.
+[2026-06-10 10:46:37] Syncing goal progress ...
+[2026-06-10 10:46:37] Refreshing memory snapshots ...
+[2026-06-10 10:46:37]   All .md files updated.
+[2026-06-10 10:46:37] Daily job complete.
+[2026-06-10 10:46:37] ================================================
+[2026-06-10 11:07:39] ================================================
+[2026-06-10 11:07:39] Daily job starting ...
+[2026-06-10 11:07:39] ================================================
+[2026-06-10 11:07:39] Computing daily summary for 2026-06-09 ...
+[2026-06-10 11:07:39]   workout_done=False | calories_hit=False | protein_hit=False | streak=0
+[2026-06-10 11:07:39] Checking last 7 days for missing entries ...
+[2026-06-10 11:07:39]   No missing days found.
+[2026-06-10 11:07:39] Syncing goal progress ...
+[2026-06-10 11:07:39] Refreshing memory snapshots ...
+[2026-06-10 11:07:39]   All .md files updated.
+[2026-06-10 11:07:39] Daily job complete.
+[2026-06-10 11:07:39] ================================================

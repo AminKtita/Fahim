@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/dashboard
+      - /app/api/.venv
+      - sqlite_data:/app/db # Isolates database files from host synchronization issues
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - ENV=development
+
+  ai_coach:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/dashboard
+      - sqlite_data:/app/db # Shared volume access with the api container
+    command: python main.py
+    stdin_open: true
+    tty: true
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173" # Matches the Vite port layout
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    stdin_open: true
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - api
+
+# Named volume definition added at the very bottom
+volumes:
+  sqlite_data:

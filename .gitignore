@@ -1,1 +1,15 @@
-db/fitness.db
+# Ignore the local SQLite database folder
+db/
+
+# Ignore the local AI memory markdown files
+memory/
+
+# Ignore Python cache files
+**/__pycache__/
+*.pyc
+
+# Ignore virtual environments (just in case)
+api/.venv/
+
+# Ignore node_modules if you have them in your frontend folder
+**/node_modules/
