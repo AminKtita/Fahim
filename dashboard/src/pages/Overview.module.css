@@ -135,3 +135,89 @@
   line-height: 1;
 }
 .macroUnit { font-size: 12px; color: var(--muted); margin-left: 2px; }
+
+/* ── new week cell states ── */
+.cellMissed {
+  height: 34px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 8px; letter-spacing: 0.05em;
+  background: #1a0000; border: 1px solid #3a1010; color: var(--danger);
+}
+.cellRest {
+  height: 34px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 8px; letter-spacing: 0.05em;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--faint);
+}
+.lgMissed { color: var(--danger); }
+.lgRest   { color: var(--faint); }
+
+/* ── alert banners ── */
+.alertGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+.alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+  flex-wrap: wrap;
+}
+.alert[data-type="workout"] {
+  background: #1a0d00;
+  border-color: #5a3000;
+}
+.alert[data-type="nutrition"] {
+  background: #181200;
+  border-color: #4a3a00;
+}
+.alertLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.alertIcon {
+  font-size: 14px;
+  color: var(--warn);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.alertTitle {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warn);
+  margin-bottom: 4px;
+}
+.alertMsg {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.alertBtn {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--warn);
+  background: none;
+  border: 1px solid var(--warn-border);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .12s;
+  flex-shrink: 0;
+}
+.alertBtn:hover {
+  background: var(--warn-bg);
+  color: var(--text);
+}

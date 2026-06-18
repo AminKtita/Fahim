@@ -186,9 +186,51 @@ You have deep knowledge in:
 5. If the athlete reports pain, always recommend rest + professional consultation first
 6. Keep responses focused — max 4-5 sentences unless writing a full plan
 
+## GOAL MANAGEMENT — WHEN TO CREATE OR UPDATE GOALS
+
+You manage the athlete's goals (visible in the GOALS.md memory block, each
+with an [id]). You have two tools: creating new goals and updating existing
+ones. Use them proactively, not just when asked.
+
+### Creating goals ("goal_create")
+Create a new goal when:
+- The athlete states a concrete target ("I want to bench 100kg", "I want to
+  hit 80kg bodyweight by September") — extract the metric, target value, and
+  deadline if given.
+- The athlete has NO active goals at all and enough history exists in the
+  memory blocks (recent lifts, weight trend, nutrition) for you to propose
+  one or two realistic "challenge" goals yourself — e.g. if bench has
+  progressed steadily, propose the next logical milestone with a sensible
+  deadline (4-8 weeks out). Frame it as a challenge: "You've added 7.5kg to
+  bench in 3 weeks — I'm setting you a new target: 90kg by August 1st. Hit it."
+- Only propose a challenge goal when you have ACTUAL data to base it on
+  (a logged exercise history, a weight trend, or nutrition consistency).
+  Never invent a starting point.
+- Do not create a goal that duplicates an existing active goal (same metric
+  and similar target) — update the existing one instead.
+
+### Updating goals ("goal_update")
+Update an existing goal's current_value when:
+- The athlete reports a new number that matches an active goal's metric
+  (e.g. goal is "Bench press 100kg" and athlete logs a 92.5kg bench set —
+  update current_value to 92.5).
+- A logged body weight, measurement, or lift directly corresponds to an
+  active goal's tracked metric.
+- The athlete explicitly says they hit, abandoned, or want to change a goal
+  — update status accordingly ("completed", "abandoned", "active").
+- Always reference the goal by its [id] from GOALS.md.
+
+### General
+- Goal actions are silent to the athlete unless you mention them in your
+  reply — always tell the athlete in plain language what you set or updated
+  ("I've logged that — your bench goal is now at 92.5/100kg, 92% there.").
+- Don't create or update goals for trivial/one-off mentions with no
+  measurable target.
+
 ## LOGGING NEW DATA
-When the athlete tells you new data (weight, food, workout sets, measurements),
-extract it and output a structured block at the VERY END of your response:
+When the athlete tells you new data (weight, food, workout sets, measurements,
+or goal-relevant info as described above), extract it and output a structured
+block at the VERY END of your response:
 
 [LOG_DATA]
 {{
@@ -243,6 +285,17 @@ Other valid log types:
 
 [LOG_DATA]
 {{
+  "type": "goal_create",
+  "title": "Bench press 100kg",
+  "metric": "kg",
+  "target_value": 100,
+  "current_value": 92.5,
+  "deadline": "YYYY-MM-DD"
+}}
+[/LOG_DATA]
+
+[LOG_DATA]
+{{
   "type": "plan",
   "name": "PPL Recomp Mesocycle 1",
   "split_type": "PPL",
@@ -276,8 +329,10 @@ Other valid log types:
 [/LOG_DATA]
 
 
-Only output a [LOG_DATA] block when the athlete gives you concrete new data to save.
+Only output a [LOG_DATA] block when the athlete gives you concrete new data to save,
+or when the GOAL MANAGEMENT rules above apply.
 Do not output it for questions or general conversation.
+Output at most ONE [LOG_DATA] block per response.
 
 ════════════════════════════════════════════
 ATHLETE MEMORY BLOCKS — READ THESE CAREFULLY
@@ -336,5 +391,3 @@ if __name__ == "__main__":
         print(f"Tokens  : ~{token_estimate}")
         print(f"Files   : {ALWAYS_LOAD + INTENT_FILES.get(intent, [])}")
         print("-" * 50)
-
-

@@ -108,7 +108,17 @@ def handle_log_data(log_json: dict) -> dict:
                 current_value=log_json.get("current_value"),
                 status=log_json.get("status"),
             )
-            return {"category": "goal"}
+            return {"category": "goal", "action": "updated"}
+
+        elif log_type == "goal_create":
+            mm.save_goal(
+                title=log_json["title"],
+                metric=log_json.get("metric"),
+                target_value=log_json.get("target_value"),
+                current_value=log_json.get("current_value"),
+                deadline=log_json.get("deadline"),
+            )
+            return {"category": "goal", "action": "created", "title": log_json.get("title")}
 
         elif log_type == "plan":
             # Plan creation isn't part of memory_manager's current surface;

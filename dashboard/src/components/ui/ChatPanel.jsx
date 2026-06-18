@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSharedChat } from '../../lib/ChatContext'
+import QuestionChips from './QuestionChips'
 import styles from './ChatPanel.module.css'
 
 const CATEGORY_LABEL = {
@@ -9,10 +10,23 @@ const CATEGORY_LABEL = {
   goal:      'Goal updated',
 }
 
+function logLabel(log) {
+  if (log.category === 'goal' && log.action === 'created') {
+    return `New goal set: "${log.title}"`
+  }
+  return CATEGORY_LABEL[log.category] ?? log.category
+}
+
 export default function ChatPanel({ compact = false }) {
   const { messages, streaming, error, send, stop, clear } = useSharedChat()
   const [input, setInput] = useState('')
   const scrollRef = useRef(null)
+  const inputRef = useRef(null)
+
+  const handleChipSelect = (text) => {
+    setInput(text)
+    inputRef.current?.focus()
+  }
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -72,7 +86,7 @@ export default function ChatPanel({ compact = false }) {
               <div key={li} className={styles.logBadge}>
                 {log.category === 'error'
                   ? <span className={styles.logError}>⚠ log failed: {log.error}</span>
-                  : <span className={styles.logOk}>✓ {CATEGORY_LABEL[log.category] ?? log.category} · {log.date ?? ''}</span>
+                  : <span className={styles.logOk}>✓ {logLabel(log)}{log.date ? ` · ${log.date}` : ''}</span>
                 }
               </div>
             ))}
@@ -82,8 +96,11 @@ export default function ChatPanel({ compact = false }) {
         ))}
       </div>
 
+      <QuestionChips onSelect={handleChipSelect} compact={compact} />
+
       <div className={styles.inputRow}>
         <textarea
+          ref={inputRef}
           className={styles.input}
           placeholder="Message Fahim…"
           value={input}

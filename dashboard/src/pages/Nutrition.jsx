@@ -155,14 +155,19 @@ export default function Nutrition() {
         <div className={styles.heatmap}>
           {last30.map(date => {
             const st = heatStatus(date)
-            const cellCls = st === 'hit'     ? styles.heatHit
-                          : st === 'partial' ? styles.heatPartial
-                          : st === 'off'     ? styles.heatOff
-                          : st === 'missed'  ? styles.heatMissed
-                          :                   styles.heatEmpty
+            const cellCls =
+              st === 'hit' ? styles.heatHit :
+              st === 'partial' ? styles.heatPartial :
+              st === 'off' ? styles.heatOff :
+              st === 'missed' ? styles.heatMissed :
+              styles.heatEmpty
+
             return (
-              <div key={date} className={`${styles.heatCell} ${cellCls}`}
-                title={`${date}: ${st ?? 'not logged'}`}>
+              <div
+                key={date}
+                className={`${styles.heatCell} ${cellCls}`}
+                title={`${date}: ${st ?? 'not logged'}`}
+              >
                 <span className={styles.heatDay}>{dayjs(date).format('D')}</span>
               </div>
             )

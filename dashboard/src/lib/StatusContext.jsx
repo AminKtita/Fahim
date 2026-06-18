@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
-import { getWorkouts, getNutrition, getPlan } from './api'
+import { getWorkouts, getNutrition, getPlan, getGoals } from './api'
 import { deriveNutStatus } from './NutritionModals'
 import dayjs from 'dayjs'
 
@@ -86,10 +86,11 @@ export function StatusProvider({ children }) {
     pendingRef.current = true
     try {
       const today = dayjs().format('YYYY-MM-DD')
-      const [workouts, nutrition, plan] = await Promise.all([
+      const [workouts, nutrition, plan, goals] = await Promise.all([
         getWorkouts(120),
         getNutrition(120),
         getPlan().catch(() => null),
+        getGoals('active').catch(() => []),
       ])
 
       const todayW = workouts?.find(w => w.date === today)
@@ -100,10 +101,11 @@ export function StatusProvider({ children }) {
         streak:               computeStreak(workouts, nutrition, plan),
         workoutToday:         !!(todayW && todayW.session_type !== 'missed' && todayW.session_type !== 'rest'),
         nutritionLoggedToday: !!(todayN?.calories),
-        // expose raw data so Schedule can use it without re-fetching
+        // expose raw data so Schedule (and the question suggester) can use it without re-fetching
         _workouts:  workouts,
         _nutrition: nutrition,
         _plan:      plan,
+        _goals:     goals,
       })
     } catch {
       setStatus({ ollamaOk: false, streak: 0, workoutToday: false, nutritionLoggedToday: false })
