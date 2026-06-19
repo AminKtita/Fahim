@@ -1,7 +1,7 @@
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .field {
@@ -11,11 +11,9 @@
 }
 
 .label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--faint);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .actions {
@@ -24,9 +22,10 @@
   gap: 14px;
   margin-top: 16px;
 }
+.actions button { padding: 9px 20px; font-size: 12px; }
 
-.error   { font-family: var(--mono); font-size: 10px; color: var(--danger); }
-.success { font-family: var(--mono); font-size: 10px; color: var(--accent); }
+.error   { font-size: 11px; color: var(--danger); }
+.success { font-size: 11px; color: var(--accent); font-weight: 500; }
 
 /* sets table */
 .setsHeader {
@@ -36,11 +35,9 @@
   margin: 18px 0 10px;
 }
 .setsLabel {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--faint);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
 }
 .setsTable { display: flex; flex-direction: column; gap: 6px; }
 
@@ -53,9 +50,9 @@
 .setsRow input { min-width: 0; }
 
 .colHead {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--faint);
   flex: 1;

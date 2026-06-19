@@ -48,11 +48,15 @@ export default function ChatPanel({ compact = false }) {
   return (
     <div className={`${styles.wrap} ${compact ? styles.compact : ''}`}>
       <div className={styles.header}>
-        <span className={styles.headerLabel}>FAHIM.chat</span>
+        <div className={styles.headerLeft}>
+          <span className={styles.headerDot} />
+          <span className={styles.headerLabel}>Fahim</span>
+          <span className={styles.headerSub}>AI coach</span>
+        </div>
         <div className={styles.headerRight}>
-          {streaming && <span className={styles.thinkingDot}>● thinking…</span>}
+          {streaming && <span className={styles.thinkingDot}>● Thinking…</span>}
           {messages.length > 0 && (
-            <button className={styles.clearBtn} onClick={clear}>clear</button>
+            <button className={styles.clearBtn} onClick={clear}>Clear</button>
           )}
         </div>
       </div>
@@ -60,18 +64,23 @@ export default function ChatPanel({ compact = false }) {
       <div className={styles.messages} ref={scrollRef}>
         {messages.length === 0 && (
           <div className={styles.empty}>
-            <span className={styles.emptyMono}>$ fahim --chat</span>
-            <span className={styles.emptySub}>Ask about your training, log a workout, or get advice.</span>
+            <span className={styles.emptyMono}>Ask Fahim anything</span>
+            <span className={styles.emptySub}>Ask about your training, log a workout, or get coaching advice.</span>
           </div>
         )}
 
         {messages.map((m, i) => (
           <div key={i} className={`${styles.msgRow} ${styles[m.role]}`}>
-            <span className={styles.msgRole}>{m.role === 'user' ? 'YOU' : 'FAHIM'}</span>
+            {m.role === 'assistant' && (
+              <div className={styles.avatarRow}>
+                <span className={styles.avatar}>F</span>
+                <span className={styles.msgRole}>Fahim</span>
+              </div>
+            )}
 
             {m.role === 'assistant' && m.thinking && (
               <details className={styles.thinkingBlock} open={streaming && i === messages.length - 1}>
-                <summary className={styles.thinkingSummary}>thinking…</summary>
+                <summary className={styles.thinkingSummary}>Thinking…</summary>
                 <div className={styles.thinkingText}>{m.thinking}</div>
               </details>
             )}
@@ -85,7 +94,7 @@ export default function ChatPanel({ compact = false }) {
             {m.logs?.map((log, li) => (
               <div key={li} className={styles.logBadge}>
                 {log.category === 'error'
-                  ? <span className={styles.logError}>⚠ log failed: {log.error}</span>
+                  ? <span className={styles.logError}>⚠ Couldn't save: {log.error}</span>
                   : <span className={styles.logOk}>✓ {logLabel(log)}{log.date ? ` · ${log.date}` : ''}</span>
                 }
               </div>
@@ -109,9 +118,9 @@ export default function ChatPanel({ compact = false }) {
           rows={1}
         />
         {streaming ? (
-          <button className="btn-ghost" onClick={stop}>STOP</button>
+          <button className="btn-ghost" onClick={stop}>Stop</button>
         ) : (
-          <button onClick={handleSend} disabled={!input.trim()}>SEND →</button>
+          <button className="btn-primary" onClick={handleSend} disabled={!input.trim()}>Send</button>
         )}
       </div>
     </div>

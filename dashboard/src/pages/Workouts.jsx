@@ -16,24 +16,18 @@ export default function Workouts() {
   const { data: plan }              = useApi(getPlan)
   const [selWorkout, setSelWorkout] = useState(null)
   const [selDate,    setSelDate]    = useState(null)
+  const [selectedExercise, setSelectedExercise] = useState(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   const today = dayjs().format('YYYY-MM-DD')
   const todayWorkout = workouts?.find(w => w.date === today)
-  const canLogToday  = !todayWorkout
+  const todayPlan    = getPlanDayForDate(plan, today)
 
   const onSaved = () => { refetch(); refreshStatus() }
 
-  // modals wired to selected workout (for history) or today for logging
-  const historyModals = useWorkoutModals({
-    plan, selDate, selWorkout,
-    onSaved,
-  })
-  const todayModals = useWorkoutModals({
-    plan, selDate: today, selWorkout: todayWorkout,
-    onSaved,
-  })
+  const historyModals = useWorkoutModals({ plan, selDate, selWorkout, onSaved })
+  const todayModals   = useWorkoutModals({ plan, selDate: today, selWorkout: todayWorkout, onSaved })
 
-  const [selectedExercise, setSelectedExercise] = useState(null)
   const exercises = [...new Set(
     workouts?.flatMap(w => w.sets?.map(s => s.exercise) ?? []).filter(Boolean) ?? []
   )].sort()
@@ -41,35 +35,108 @@ export default function Workouts() {
   const effortColor = e => !e ? 'neutral' : e >= 8 ? 'warning' : e >= 6 ? 'info' : 'positive'
   const isRestOrMissed = w => w?.session_type === 'rest' || w?.session_type === 'missed'
 
+  const openExercise = (ex) => {
+    setSelectedExercise(ex)
+    setDrawerOpen(true)
+  }
+
+  const sessionList = workouts?.filter(w => !isRestOrMissed(w)) ?? []
+
   return (
-    <div>
+    <div className={styles.root}>
+
+      {/* ── EXERCISE HISTORY DRAWER ── */}
+      {drawerOpen && (
+        <div className={styles.drawerOverlay} onClick={() => setDrawerOpen(false)}>
+          <div className={styles.drawer} onClick={e => e.stopPropagation()}>
+            <div className={styles.drawerHeader}>
+              <span className={styles.drawerTitle}>
+                {selectedExercise
+                  ? selectedExercise.charAt(0).toUpperCase() + selectedExercise.slice(1)
+                  : 'Exercise history'}
+              </span>
+              <button className={styles.drawerClose} onClick={() => setDrawerOpen(false)}>✕</button>
+            </div>
+
+            {/* Exercise picker */}
+            <div className={styles.drawerPicker}>
+              {exercises.map(ex => (
+                <button
+                  key={ex}
+                  className={`${styles.exChip} ${selectedExercise === ex ? styles.exChipActive : ''}`}
+                  onClick={() => setSelectedExercise(ex)}
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+
+            {/* History entries */}
+            {selectedExercise && (
+              <div className={styles.drawerHistory}>
+                {workouts
+                  ?.filter(w => w.sets?.some(s => s.exercise === selectedExercise))
+                  .map(w => {
+                    const sets = w.sets.filter(s => s.exercise === selectedExercise && !s.is_warmup)
+                    if (!sets.length) return null
+                    const top = sets.reduce((b, s) => (s.weight_kg ?? 0) > (b.weight_kg ?? 0) ? s : b, sets[0])
+                    return (
+                      <div key={w.id} className={styles.histRow}>
+                        <span className={styles.histDate}>{dayjs(w.date).format('MMM D')}</span>
+                        <div className={styles.histSets}>
+                          {sets.map((s, i) => (
+                            <span key={i} className={styles.histSet}>
+                              {s.reps ?? '?'} × {s.weight_kg ? `${s.weight_kg}kg` : 'BW'}
+                              {s.rpe ? ` @${s.rpe}` : ''}
+                            </span>
+                          ))}
+                        </div>
+                        <span className={styles.histTop}>
+                          Best: {sets.length}×{top.reps ?? '?'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}
+                        </span>
+                      </div>
+                    )
+                  })
+                  .filter(Boolean)
+                }
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* PAGE HEADER */}
       <div className={styles.pageHeader}>
         <div>
-          <div className={styles.eyebrow}>WORKOUTS.db</div>
-          <div className={styles.pageTitle}>Session log</div>
+          <div className={styles.pageTitle}>Workouts</div>
+          <div className={styles.pageSub}>Session log and exercise history.</div>
         </div>
+        {exercises.length > 0 && (
+          <button className="btn-ghost" onClick={() => { setSelectedExercise(exercises[0]); setDrawerOpen(true) }}>
+            Exercise history →
+          </button>
+        )}
       </div>
 
       {/* TODAY PANEL */}
-      <SectionDivider label="TODAY.session" />
+      <SectionDivider label="Today's session" />
       <div className={styles.todayWrap}>
-        <Panel label="TODAY.workout">
+        <Panel label={`Today · ${dayjs().format('dddd, MMMM D')}`}>
           {todayWorkout ? (
             isRestOrMissed(todayWorkout) ? (
               <div className={styles.todayLogged}>
-                <span className={styles.todayStatus} style={{ color: todayWorkout.session_type === 'missed' ? 'var(--danger)' : 'var(--muted)' }}>
-                  {todayWorkout.session_type === 'missed' ? 'MISSED' : 'REST DAY'}
-                </span>
-                <div className={styles.todayBtns}>
-                  <button className="btn-ghost" style={{ padding: '4px 12px', fontSize: 10 }}
-                    onClick={() => { setSelDate(today); setSelWorkout(todayWorkout); setTimeout(todayModals.openEdit, 0) }}>edit</button>
+                <div className={styles.todayStatus} style={{ color: todayWorkout.session_type === 'missed' ? 'var(--danger)' : 'var(--muted)' }}>
+                  {todayWorkout.session_type === 'missed' ? '✗ Session missed' : '— Rest day'}
                 </div>
+                <button className="btn-ghost" style={{ padding:'5px 14px', fontSize:11, marginTop:8 }}
+                  onClick={() => { setSelDate(today); setSelWorkout(todayWorkout); setTimeout(todayModals.openEdit, 0) }}>
+                  Edit
+                </button>
               </div>
             ) : (
               <div className={styles.todayLogged}>
                 <div className={styles.todayMeta}>
-                  <Badge type="positive">{(todayWorkout.session_type ?? 'session').toUpperCase()}</Badge>
+                  <Badge type="positive">{(todayWorkout.session_type ?? 'Session').toUpperCase()}</Badge>
                   {todayWorkout.duration_min && <span className={styles.todayMetaItem}>{todayWorkout.duration_min} min</span>}
                   {todayWorkout.perceived_effort && <Badge type={effortColor(todayWorkout.perceived_effort)}>RPE {todayWorkout.perceived_effort}</Badge>}
                 </div>
@@ -85,26 +152,50 @@ export default function Workouts() {
                       const top = sets.reduce((b, s) => (s.weight_kg ?? 0) > (b.weight_kg ?? 0) ? s : b, sets[0])
                       return (
                         <div key={ex} className={styles.todaySetRow}>
-                          <span className={styles.todaySetEx}>{ex}</span>
-                          <span className={styles.todaySetVal}>{sets.length}×{top.reps ?? '?'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}</span>
+                          <span
+                            className={styles.todaySetEx}
+                            onClick={() => openExercise(ex)}
+                            title="View exercise history"
+                          >{ex}</span>
+                          <span className={styles.todaySetVal}>
+                            {sets.length} × {top.reps ?? '?'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}
+                          </span>
                         </div>
                       )
                     })}
                   </div>
                 )}
                 <div className={styles.todayBtns}>
-                  <button className="btn-ghost" style={{ padding: '4px 12px', fontSize: 10 }}
-                    onClick={() => { setSelDate(today); setSelWorkout(todayWorkout); setTimeout(todayModals.openEdit, 0) }}>edit</button>
-                  <button className="btn-ghost" style={{ padding: '4px 12px', fontSize: 10 }}
-                    onClick={() => { setSelDate(today); setSelWorkout(todayWorkout); setTimeout(todayModals.openDetail, 0) }}>details →</button>
+                  <button className="btn-ghost" style={{ padding:'5px 14px', fontSize:11 }}
+                    onClick={() => { setSelDate(today); setSelWorkout(todayWorkout); setTimeout(todayModals.openEdit, 0) }}>
+                    Edit
+                  </button>
+                  <button className="btn-ghost" style={{ padding:'5px 14px', fontSize:11 }}
+                    onClick={() => { setSelDate(today); setSelWorkout(todayWorkout); setTimeout(todayModals.openDetail, 0) }}>
+                    Full details →
+                  </button>
                 </div>
               </div>
             )
           ) : (
             <div className={styles.todayEmpty}>
-              <span className={styles.todayEmptyMono}>NOT_LOGGED · no session today yet</span>
-              <button style={{ padding: '7px 18px' }} onClick={() => { setSelDate(today); todayModals.openLog() }}>
-                + LOG_TODAY
+              <div className={styles.todayEmptyLeft}>
+                {todayPlan ? (
+                  <>
+                    <span className={styles.planBadge}>{(todayPlan.session_type ?? 'Training').toUpperCase()} DAY</span>
+                    {todayPlan.exercises?.length > 0 && (
+                      <span className={styles.planExercises}>
+                        {todayPlan.exercises.slice(0, 3).map(e => e.exercise).join(' · ')}
+                        {todayPlan.exercises.length > 3 ? ` +${todayPlan.exercises.length - 3} more` : ''}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className={styles.todayEmptyHint}>No session logged yet today</span>
+                )}
+              </div>
+              <button className="btn-primary" onClick={() => { setSelDate(today); todayModals.openLog() }}>
+                Log today's session
               </button>
             </div>
           )}
@@ -112,39 +203,51 @@ export default function Workouts() {
       </div>
 
       {/* VOLUME CHART */}
-      <SectionDivider label="WORKOUT_VOLUME.60d" />
+      <SectionDivider label="Training volume" />
       <div className={styles.chartWrap}>
-        <Panel label="SETS_PER_DAY.bar_chart">
-          <VolumeChart workouts={workouts ?? []} />
+        <Panel label="Sets per day · 60 days" noPad>
+          <div style={{padding:'12px 16px 8px'}}>
+            <VolumeChart workouts={workouts ?? []} />
+          </div>
         </Panel>
       </div>
 
       {/* SESSION LIST */}
-      <SectionDivider label="SESSION_HISTORY.log" />
-      <div className={styles.grid}>
-        <Panel label="SESSIONS.recent" action="60 days" className={styles.sessionPanel}>
+      <SectionDivider label="Session history" />
+      <div className={styles.sessionListWrap}>
+        <Panel label={`${sessionList.length} session${sessionList.length !== 1 ? 's' : ''} · last 60 days`}>
           {!workouts?.length
-            ? <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--faint)' }}>NO_SESSIONS · log your first workout</span>
+            ? (
+              <div className={styles.emptyState}>
+                <span className={styles.emptyIcon}>🏋</span>
+                <span className={styles.emptyText}>No sessions logged yet</span>
+                <span className={styles.emptySub}>Log your first workout above to start tracking progress.</span>
+              </div>
+            )
             : workouts.map(w => (
               <div key={w.id} className={styles.sessionRow}>
                 <div className={styles.sessionTop}>
                   <div className={styles.sessionLeft}>
                     <span className={styles.sessionDate}>{dayjs(w.date).format('MMM D')}</span>
                     {isRestOrMissed(w)
-                      ? <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: w.session_type === 'missed' ? 'var(--danger)' : 'var(--faint)' }}>
-                          {w.session_type.toUpperCase()}
+                      ? <span className={styles.sessionTypeText} style={{ color: w.session_type === 'missed' ? 'var(--danger)' : 'var(--faint)' }}>
+                          {w.session_type === 'missed' ? 'Missed' : 'Rest'}
                         </span>
-                      : <Badge type="positive">{(w.session_type ?? 'session').toUpperCase()}</Badge>
+                      : <Badge type="positive">{(w.session_type ?? 'session').charAt(0).toUpperCase() + (w.session_type ?? 'session').slice(1)}</Badge>
                     }
+                    {w.duration_min && <span className={styles.sessionMeta}>{w.duration_min} min</span>}
+                    {w.perceived_effort && <Badge type={effortColor(w.perceived_effort)}>RPE {w.perceived_effort}</Badge>}
                   </div>
                   <div className={styles.sessionRight}>
-                    {w.duration_min && <span className={styles.sessionMeta}>{w.duration_min}min</span>}
-                    {w.perceived_effort && <Badge type={effortColor(w.perceived_effort)}>RPE {w.perceived_effort}</Badge>}
-                    <button className={styles.iconBtn}
-                      onClick={() => { setSelDate(w.date); setSelWorkout(w); setTimeout(historyModals.openEdit, 0) }}>edit</button>
+                    <button className={styles.rowBtn}
+                      onClick={() => { setSelDate(w.date); setSelWorkout(w); setTimeout(historyModals.openEdit, 0) }}>
+                      Edit
+                    </button>
                     {!isRestOrMissed(w) && (
-                      <button className={styles.iconBtn}
-                        onClick={() => { setSelDate(w.date); setSelWorkout(w); setTimeout(historyModals.openDetail, 0) }}>details →</button>
+                      <button className={styles.rowBtn}
+                        onClick={() => { setSelDate(w.date); setSelWorkout(w); setTimeout(historyModals.openDetail, 0) }}>
+                        Details →
+                      </button>
                     )}
                   </div>
                 </div>
@@ -160,9 +263,14 @@ export default function Workouts() {
                       const top = sets.reduce((b, s) => (s.weight_kg ?? 0) > (b.weight_kg ?? 0) ? s : b, sets[0])
                       return (
                         <div key={ex} className={styles.exRow}>
-                          <span className={styles.exName}
-                            onClick={() => setSelectedExercise(ex === selectedExercise ? null : ex)}>{ex}</span>
-                          <span className={styles.exDetail}>{sets.length}×{top.reps ?? '?'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}{top.rpe ? ` RPE${top.rpe}` : ''}</span>
+                          <span
+                            className={styles.exName}
+                            onClick={() => openExercise(ex)}
+                            title="View exercise history"
+                          >{ex}</span>
+                          <span className={styles.exDetail}>
+                            {sets.length} × {top.reps ?? '?'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}{top.rpe ? ` · RPE ${top.rpe}` : ''}
+                          </span>
                         </div>
                       )
                     })}
@@ -173,44 +281,6 @@ export default function Workouts() {
             ))
           }
         </Panel>
-
-        {/* EXERCISE HISTORY */}
-        <div className={styles.rightCol}>
-          <Panel label={selectedExercise ? `EXERCISE.${selectedExercise.toUpperCase().replace(/ /g,'_')}` : 'EXERCISE_HISTORY.select'}>
-            {!selectedExercise ? (
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--faint)', marginBottom: 14 }}>tap an exercise name to see its history</div>
-                <div className={styles.exerciseList}>
-                  {exercises.map(ex => (
-                    <div key={ex} className={styles.exChip} onClick={() => setSelectedExercise(ex)}>{ex}</div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className={styles.exHistoryHeader}>
-                  <span className={styles.exHistoryName}>{selectedExercise}</span>
-                  <button className="btn-ghost" style={{ padding: '3px 10px', fontSize: 10 }}
-                    onClick={() => setSelectedExercise(null)}>clear ✕</button>
-                </div>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--faint)' }}>
-                  {workouts?.filter(w => w.sets?.some(s => s.exercise === selectedExercise))
-                    .map(w => {
-                      const sets = w.sets.filter(s => s.exercise === selectedExercise && !s.is_warmup)
-                      if (!sets.length) return null
-                      const top = sets.reduce((b, s) => (s.weight_kg ?? 0) > (b.weight_kg ?? 0) ? s : b, sets[0])
-                      return (
-                        <div key={w.id} className={styles.exHistRow}>
-                          <span style={{ color: 'var(--muted)' }}>{dayjs(w.date).format('MMM D')}</span>
-                          <span style={{ color: 'var(--text)' }}>{sets.length}×{top.reps ?? '?'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}{top.rpe ? ` @${top.rpe}` : ''}</span>
-                        </div>
-                      )
-                    })}
-                </div>
-              </div>
-            )}
-          </Panel>
-        </div>
       </div>
 
       {historyModals.Modals()}

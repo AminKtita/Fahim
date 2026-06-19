@@ -118,9 +118,9 @@ export default function GoalForm({ onSaved }) {
 
       <div className={styles.actions}>
         {error && <span className={styles.error}>{error}</span>}
-        {saved  && <span className={styles.success}>GOAL CREATED ✓</span>}
-        <button onClick={handleSubmit} disabled={saving}>
-          {saving ? 'SAVING…' : 'CREATE_GOAL →'}
+        {saved  && <span className={styles.success}>✓ Goal created</span>}
+        <button className="btn-primary" onClick={handleSubmit} disabled={saving}>
+          {saving ? 'Saving…' : 'Create goal'}
         </button>
       </div>
     </div>

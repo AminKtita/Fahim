@@ -1,27 +1,18 @@
+/* ── Page header ── */
 .pageHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 28px 24px 20px;
+  padding: 24px 24px 20px;
   border-bottom: 1px solid var(--border);
+  gap: 16px;
 }
-.eyebrow {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  color: var(--faint);
-  margin-bottom: 6px;
-}
-.pageTitle {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
+.pageTitle { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); margin-bottom: 4px; }
+.pageSub   { font-size: 12px; color: var(--muted); }
 .formWrap  { border-bottom: 1px solid var(--border); }
 .chartWrap { border-bottom: 1px solid var(--border); }
 
+/* ── Stats grid ── */
 .statsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -31,34 +22,82 @@
 }
 .statBox {
   background: var(--surface);
-  padding: 18px 20px;
+  padding: 20px 20px 18px;
 }
 .statLabel {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--faint);
-  margin-bottom: 8px;
+  font-family: var(--mono);
+  margin-bottom: 10px;
 }
-.statVal  { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
+.statVal  { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; letter-spacing: -0.03em; }
 .statUnit { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+.statDelta { font-size: 10px; font-family: var(--mono); margin-top: 6px; }
+.deltaUp   { color: var(--warn); }
+.deltaDown { color: var(--accent); }
+.statSub   { font-size: 11px; color: var(--faint); margin-top: 6px; }
 
-/* measurements */
+/* ── Strength section ── */
+.strengthSection {
+  padding: 16px 24px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.liftSelector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+.liftChip {
+  font-size: 11px;
+  padding: 5px 13px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--sans);
+  letter-spacing: 0;
+  transition: all 0.15s;
+}
+.liftChip:hover { border-color: var(--accent-border); color: var(--accent); background: var(--accent-bg); }
+.liftChipActive { border-color: var(--accent) !important; color: var(--accent) !important; background: var(--accent-bg) !important; }
+.emptyHint { font-size: 11px; color: var(--faint); font-family: var(--mono); }
+
+.liftChartWrap { margin-top: 4px; }
+.liftPrompt { font-size: 11px; color: var(--faint); font-family: var(--mono); text-align: center; padding: 24px 0; }
+
+/* ── Empty states ── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 20px;
+  gap: 8px;
+}
+.emptyStateIcon { font-size: 28px; }
+.emptyStateText { font-size: 13px; font-weight: 600; color: var(--muted); }
+.emptyStateSub  { font-size: 11px; color: var(--faint); max-width: 280px; line-height: 1.6; }
+
+/* ── Measurements grid ── */
 .metricsGrid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 1px;
   background: var(--border);
 }
-
 .lastLogged {
-  font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--faint);
+  font-family: var(--mono);
   margin-bottom: 14px;
 }
-
 .measureList { display: flex; flex-direction: column; }
 .measureRow {
   display: flex;
@@ -69,9 +108,9 @@
 }
 .measureRow:last-child { border-bottom: none; }
 .measureLabel { font-size: 12px; color: var(--muted); }
-.measureVal   { font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--text); }
+.measureVal   { font-size: 16px; font-weight: 600; color: var(--text); font-family: var(--mono); }
 
-/* consistency */
+/* ── Consistency ── */
 .consistencyWrap { }
 .bigPct {
   font-size: 52px;
@@ -82,31 +121,21 @@
   margin-bottom: 6px;
 }
 .bigPctUnit { font-size: 22px; color: var(--muted); font-weight: 400; }
-.consistencySub {
-  font-size: 11px;
-  color: var(--muted);
-  margin-bottom: 16px;
-}
-
+.consistencySub { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
 .dotGrid {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   margin-bottom: 10px;
 }
-.calDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-.dotDone { background: var(--accent); opacity: 0.7; }
+.calDot { width: 10px; height: 10px; border-radius: 2px; }
+.dotDone { background: var(--accent); opacity: 0.8; }
 .dotRest { background: var(--surface2); border: 1px solid var(--border); }
-
-.dotLegend { display: flex; gap: 14px; font-family: var(--mono); font-size: 9px; }
+.dotLegend { display: flex; gap: 14px; font-size: 10px; font-family: var(--mono); }
 .ldDone { color: var(--accent); }
 .ldRest { color: var(--faint); }
 
-/* weight table */
+/* ── Weight table ── */
 .tableWrap { overflow-y: auto; max-height: 380px; }
 .wTable { width: 100%; border-collapse: collapse; }
 .wTable th {
@@ -129,6 +158,6 @@
   border-bottom: 1px solid var(--border);
 }
 .wTable tr:last-child td { border-bottom: none; }
-.weightCell { color: var(--text) !important; font-family: var(--mono); }
+.weightCell { color: var(--text) !important; font-family: var(--mono); font-size: 13px; font-weight: 600; }
 .deltaUp   { color: var(--warn)   !important; font-family: var(--mono); font-size: 11px; }
 .deltaDown { color: var(--accent) !important; font-family: var(--mono); font-size: 11px; }

@@ -3,12 +3,12 @@ import { useStatus } from '../../lib/StatusContext'
 import styles from './Layout.module.css'
 
 const NAV_LINKS = [
-  { to: '/',          label: 'overview'   },
-  { to: '/schedule',  label: 'schedule'   },
-  { to: '/workouts',  label: 'workouts'   },
-  { to: '/nutrition', label: 'nutrition'  },
-  { to: '/progress',  label: 'progress'   },
-  { to: '/goals',     label: 'goals'      },
+  { to: '/',          label: 'Overview'   },
+  { to: '/schedule',  label: 'Schedule'   },
+  { to: '/workouts',  label: 'Workouts'   },
+  { to: '/nutrition', label: 'Nutrition'  },
+  { to: '/progress',  label: 'Progress'   },
+  { to: '/goals',     label: 'Goals'      },
 ]
 
 export default function Layout({ children }) {
@@ -17,7 +17,10 @@ export default function Layout({ children }) {
   return (
     <div className={styles.shell}>
       <nav className={styles.nav}>
-        <span className={styles.logo}>$<span>Coach</span>.Fahim</span>
+        <span className={styles.logo}>
+          <span className={styles.logoMark}>F</span>
+          <span className={styles.logoText}>ahim</span>
+        </span>
         <div className={styles.links}>
           {NAV_LINKS.map(l => (
             <NavLink
@@ -32,25 +35,31 @@ export default function Layout({ children }) {
             </NavLink>
           ))}
         </div>
-        <div className={styles.statusPill}>
-          <div className={`${styles.dot} ${status?.ollamaOk ? styles.green : styles.yellow}`} />
-          <span>{status?.ollamaOk ? 'OPERATIONAL' : 'DEGRADED'}</span>
+        <div className={styles.navRight}>
+          <div className={`${styles.syncDot} ${status?.ollamaOk ? styles.online : styles.offline}`} />
+          <span className={styles.syncLabel}>{status?.ollamaOk ? 'AI online' : 'AI offline'}</span>
         </div>
       </nav>
 
       {status && (
         <div className={styles.statusBar}>
-          <StatusItem
-            dot={status.streak > 0 ? 'green' : 'faint'}
-            label={`streak · ${status.streak} day${status.streak !== 1 ? 's' : ''}`}
+          <StatusChip
+            icon="🔥"
+            value={`${status.streak} day streak`}
+            active={status.streak > 0}
           />
-          <StatusItem
-            dot={status.nutritionLoggedToday ? 'green' : 'yellow'}
-            label={status.nutritionLoggedToday ? 'nutrition · logged' : 'nutrition · not logged today'}
+          <div className={styles.statusDivider} />
+          <StatusChip
+            icon={status.nutritionLoggedToday ? '✓' : '○'}
+            value={status.nutritionLoggedToday ? 'Nutrition logged' : 'Nutrition pending'}
+            active={status.nutritionLoggedToday}
+            warn={!status.nutritionLoggedToday}
           />
-          <StatusItem
-            dot={status.workoutToday ? 'green' : 'blue'}
-            label={status.workoutToday ? 'trained today' : 'no session today'}
+          <div className={styles.statusDivider} />
+          <StatusChip
+            icon={status.workoutToday ? '✓' : '○'}
+            value={status.workoutToday ? 'Session logged' : 'No session today'}
+            active={status.workoutToday}
           />
         </div>
       )}
@@ -60,12 +69,11 @@ export default function Layout({ children }) {
   )
 }
 
-function StatusItem({ dot, label }) {
-  const dotColors = { green:'var(--accent)', yellow:'var(--warn)', blue:'var(--blue)', faint:'var(--faint)' }
+function StatusChip({ icon, value, active, warn }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:6, fontFamily:'var(--mono)', fontSize:10, color:'var(--faint)' }}>
-      <div style={{ width:5, height:5, borderRadius:'50%', background: dotColors[dot] ?? 'var(--faint)' }} />
-      {label}
+    <div className={`${styles.chip} ${active ? styles.chipActive : ''} ${warn ? styles.chipWarn : ''}`}>
+      <span className={styles.chipIcon}>{icon}</span>
+      <span className={styles.chipLabel}>{value}</span>
     </div>
   )
 }

@@ -1,38 +1,166 @@
-.hero {
-  padding: 44px 24px 32px;
+/* ── Alert banners (always first) ── */
+.alertGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   border-bottom: 1px solid var(--border);
 }
-.eyebrow {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 12px;
+.alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 24px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid;
 }
-.name {
-  font-size: 60px;
+.alert[data-type="workout"] {
+  background: #160d00;
+  border-color: #3d2200;
+}
+.alert[data-type="nutrition"] {
+  background: #12100000;
+  border-color: #3d3200;
+  background: #141000;
+}
+.alertLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.alertIcon { font-size: 14px; color: var(--warn); flex-shrink: 0; margin-top: 1px; }
+.alertTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warn);
+  margin-bottom: 2px;
+}
+.alertMsg { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+/* ── Today header ── */
+.todayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.todayMeta { display: flex; flex-direction: column; gap: 6px; }
+.todayDate {
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1;
+  letter-spacing: -0.02em;
   color: var(--text);
-  margin-bottom: 6px;
 }
-.sub {
-  font-size: 15px;
-  color: var(--muted);
-  margin-bottom: 28px;
+.todaySession { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sessionPill {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 20px;
+  padding: 3px 10px;
 }
+.exercisePreview { font-size: 12px; color: var(--muted); }
+.todayDone {
+  font-size: 12px;
+  color: var(--accent);
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+
+/* ── Stat grid ── */
 .statGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   background: var(--border);
   gap: 1px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
+  border-bottom: 1px solid var(--border);
 }
 
+/* ── Nutrition bar ── */
+.nutritionBar {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.nutritionBarLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.nutritionBarTitle {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.nutBadge {
+  font-size: 10px;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+.nutBadge_hit     { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-border); }
+.nutBadge_partial { color: var(--blue);   background: var(--blue-bg);   border-color: var(--blue-border); }
+.nutBadge_off     { color: var(--warn);   background: var(--warn-bg);   border-color: var(--warn-border); }
+.nutBadge_missed  { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-border); }
+
+.nutritionMacros {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.nutritionEmpty {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+}
+
+/* Macro mini progress */
+.macroMini { display: flex; flex-direction: column; gap: 5px; }
+.macroMiniHead { display: flex; justify-content: space-between; align-items: baseline; }
+.macroMiniLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  font-family: var(--mono);
+}
+.macroMiniVal { font-size: 13px; font-weight: 600; color: var(--text); }
+.macroMiniTarget { font-size: 10px; color: var(--faint); font-weight: 400; }
+.macroTrack {
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.macroFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ── Chat ── */
+.chatWrap {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Grid layouts ── */
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -41,48 +169,76 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* week grid */
-.weekSection { margin-bottom: 14px; }
+/* ── Week grid ── */
+.weekSection { margin-bottom: 16px; }
 .weekLabel {
-  font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--faint);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
 }
 .weekRow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 5px;
 }
-.cell, .cellDone, .cellToday {
-  height: 34px;
-  border-radius: 4px;
+.cell, .cellDone, .cellToday, .cellMissed, .cellRest {
+  height: 38px;
+  border-radius: var(--radius-sm);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 3px;
+  position: relative;
+}
+.cellLabel {
   font-family: var(--mono);
   font-size: 8px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
-.cell     { background: var(--surface2); border: 1px solid var(--border); color: var(--faint); }
-.cellDone { background: var(--accent-bg); border: 1px solid var(--accent-border); color: var(--accent); }
-.cellToday { background: var(--blue-bg); border: 1px solid var(--blue-border); color: var(--blue); }
+.nutDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.nutDotOk   { background: var(--accent); opacity: 0.8; }
+.nutDotMiss { background: var(--faint); opacity: 0.5; }
+
+.cell       { background: var(--surface2); border: 1px solid var(--border); color: var(--faint); }
+.cellDone   { background: var(--accent-bg); border: 1px solid var(--accent-border); color: var(--accent); }
+.cellToday  { background: var(--blue-bg); border: 1px solid var(--blue-border); color: var(--blue); }
+.cellMissed { background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); }
+.cellRest   { background: var(--surface2); border: 1px solid var(--border); color: var(--faint); }
 
 .weekLegend {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   margin-top: 10px;
+  font-size: 10px;
   font-family: var(--mono);
-  font-size: 9px;
+  flex-wrap: wrap;
 }
-.lgDone  { color: var(--accent); }
-.lgToday { color: var(--blue); }
-.lgEmpty { color: var(--faint); }
+.nutLegend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 9px;
+  font-family: var(--mono);
+}
+.nutLegendDot { font-size: 8px; }
+.lgDone   { color: var(--accent); }
+.lgToday  { color: var(--blue); }
+.lgMissed { color: var(--danger); }
+.lgRest   { color: var(--faint); }
+.lgEmpty  { color: var(--faint); opacity: 0.5; }
 
-/* feed */
+/* ── Feed ── */
 .feedRow {
   display: flex;
   gap: 12px;
@@ -93,131 +249,10 @@
 .feedRow:last-child { border-bottom: none; }
 .feedDate {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--faint);
   min-width: 44px;
   padding-top: 2px;
 }
-.feedMsg {
-  font-size: 11px;
-  color: var(--muted);
-  margin-left: 7px;
-}
-
-/* today macro */
-.todayPanel { border-bottom: 1px solid var(--border); }
-.todayGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1px;
-  background: var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-.macroItem {
-  background: var(--surface2);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.macroLabel {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--faint);
-}
-.macroVal {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text);
-  line-height: 1;
-}
-.macroUnit { font-size: 12px; color: var(--muted); margin-left: 2px; }
-
-/* ── new week cell states ── */
-.cellMissed {
-  height: 34px; border-radius: 4px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: 8px; letter-spacing: 0.05em;
-  background: #1a0000; border: 1px solid #3a1010; color: var(--danger);
-}
-.cellRest {
-  height: 34px; border-radius: 4px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: 8px; letter-spacing: 0.05em;
-  background: var(--surface2); border: 1px solid var(--border); color: var(--faint);
-}
-.lgMissed { color: var(--danger); }
-.lgRest   { color: var(--faint); }
-
-/* ── alert banners ── */
-.alertGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 20px;
-}
-.alert {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
-  border: 1px solid;
-  flex-wrap: wrap;
-}
-.alert[data-type="workout"] {
-  background: #1a0d00;
-  border-color: #5a3000;
-}
-.alert[data-type="nutrition"] {
-  background: #181200;
-  border-color: #4a3a00;
-}
-.alertLeft {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  flex: 1;
-  min-width: 0;
-}
-.alertIcon {
-  font-size: 14px;
-  color: var(--warn);
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-.alertTitle {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--warn);
-  margin-bottom: 4px;
-}
-.alertMsg {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.4;
-}
-.alertBtn {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  color: var(--warn);
-  background: none;
-  border: 1px solid var(--warn-border);
-  padding: 6px 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all .12s;
-  flex-shrink: 0;
-}
-.alertBtn:hover {
-  background: var(--warn-bg);
-  color: var(--text);
-}
+.feedMsg { font-size: 11px; color: var(--muted); margin-left: 7px; }
+.emptyNote { font-size: 11px; color: var(--faint); font-family: var(--mono); }

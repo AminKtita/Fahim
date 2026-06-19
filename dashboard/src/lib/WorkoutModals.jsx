@@ -148,7 +148,7 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
           <div className={styles.modal}>
             <div className={styles.mHead}>
               <div className={styles.mTitle}>
-                <span className={styles.mLabel}>{editId?'EDIT_WORKOUT':'LOG_WORKOUT'}</span>
+                <span className={styles.mLabel}>{editId?'Edit workout':'Log workout'}</span>
                 <span className={styles.mDate}>{dayjs(selDate).format('dddd, MMMM D YYYY')}</span>
               </div>
               <button className={styles.mClose} onClick={close}>✕</button>
@@ -160,7 +160,7 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                     <button key={k}
                       onClick={()=>setDayStatus(k)}
                       className={`${styles.statusBtn} ${dayStatus===k?`${styles.active} ${styles[k]}`:''}`}
-                    >{k==='workout'?'WORKOUT':'MISSED'}</button>
+                    >{k==='workout'?'Workout':'Missed'}</button>
                   ))}
                 </div>
               )}
@@ -174,7 +174,7 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                         <div key={i} className={styles.planPreviewRow}>
                           <span className={styles.planPreviewName}>{ex.exercise}</span>
                           <span className={styles.planPreviewDetail}>
-                            {ex.sets??'?'}×{ex.reps??'?'}{ex.rir!=null?` @${ex.rir}RiR`:''}{ex.progression_rule?` · ${ex.progression_rule}`:''}
+                            {ex.sets ?? '?'} × {ex.reps ?? '?'}{ex.rir != null ? ` · ${ex.rir} RiR` : ''}{ex.progression_rule ? ` · ${ex.progression_rule}` : ''}
                           </span>
                         </div>
                       ))}
@@ -185,7 +185,7 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                     <div className={styles.field}>
                       <label className={styles.label}>Session type</label>
                       <select value={form.session_type} onChange={e=>setF('session_type',e.target.value)}>
-                        {SESSION_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                        {SESSION_TYPES.map(t=><option key={t} value={t}>{t.replace('_',' ').replace(/^./,c=>c.toUpperCase())}</option>)}
                       </select>
                     </div>
                     <div className={styles.field}>
@@ -201,8 +201,8 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                   </div>
 
                   <div className={styles.setsHead}>
-                    <span className={styles.setsLabel}>SETS *</span>
-                    <button className="btn-ghost" style={{padding:'2px 10px',fontSize:9}} onClick={addSet}>+ SET</button>
+                    <span className={styles.setsLabel}>Sets *</span>
+                    <button className="btn-ghost" style={{padding:'2px 10px',fontSize:9}} onClick={addSet}>+ Add set</button>
                   </div>
                   <div className={styles.colHeaders}>
                     {['Exercise','Sets','Reps','kg','RPE',''].map((h,i)=><span key={i} className={styles.colHead}>{h}</span>)}
@@ -234,21 +234,21 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                 {error && <span className={styles.error}>{error}</span>}
                 {editId && !confirmDel && (
                   <button className="btn-ghost" style={{color:'var(--danger)',borderColor:'transparent',marginRight:'auto'}}
-                    onClick={()=>setConfirmDel(true)}>DELETE</button>
+                    onClick={()=>setConfirmDel(true)}>Delete</button>
                 )}
                 {confirmDel && (
                   <>
-                    <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--warn)',flex:1}}>Delete this workout?</span>
-                    <button className="btn-danger" onClick={handleDelete} disabled={saving}>{saving?'…':'CONFIRM DELETE'}</button>
-                    <button className="btn-ghost" onClick={()=>setConfirmDel(false)}>CANCEL</button>
+                    <span style={{fontSize:12,color:'var(--warn)',flex:1}}>Delete this workout?</span>
+                    <button className="btn-danger" onClick={handleDelete} disabled={saving}>{saving?'…':'Confirm delete'}</button>
+                    <button className="btn-ghost" onClick={()=>setConfirmDel(false)}>Cancel</button>
                   </>
                 )}
                 {!confirmDel && (
                   <>
                     <button onClick={handleSubmit} disabled={saving}>
-                      {saving?'SAVING…':dayStatus==='missed'?'MARK MISSED →':editId?'SAVE CHANGES →':'SAVE WORKOUT →'}
+                      {saving?'Saving…':dayStatus==='missed'?'Mark as missed':editId?'Save changes':'Save workout'}
                     </button>
-                    <button className="btn-ghost" onClick={close}>CANCEL</button>
+                    <button className="btn-ghost" onClick={close}>Cancel</button>
                   </>
                 )}
               </div>
@@ -261,7 +261,7 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
           <div className={styles.modal}>
             <div className={styles.mHead}>
               <div className={styles.mTitle}>
-                <span className={styles.mLabel}>WORKOUT.detail</span>
+                <span className={styles.mLabel}>Workout detail</span>
                 <span className={styles.mDate}>{dayjs(selDate).format('dddd, MMMM D YYYY')}</span>
               </div>
               <button className={styles.mClose} onClick={close}>✕</button>
@@ -280,7 +280,7 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
 
               {selWorkout.sets?.filter(s=>!s.is_warmup).length>0 && (
                 <>
-                  <div className={styles.sectionMono}>SETS.log</div>
+                  <div className={styles.sectionMono}>Sets</div>
                   <table className={styles.detailTable}>
                     <thead><tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th><th>RPE</th></tr></thead>
                     <tbody>
@@ -305,11 +305,11 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                 </>
               )}
 
-              {selWorkout.notes&&<div className={styles.notesBlock}><div className={styles.sectionMono}>NOTES</div><p className={styles.notesText}>{selWorkout.notes}</p></div>}
+              {selWorkout.notes&&<div className={styles.notesBlock}><div className={styles.sectionMono}>Notes</div><p className={styles.notesText}>{selWorkout.notes}</p></div>}
 
               <div className={styles.actions}>
-                <button className="btn-ghost" onClick={()=>{close();setTimeout(openEdit,50)}}>EDIT WORKOUT</button>
-                <button className="btn-ghost" onClick={close}>CLOSE</button>
+                <button className="btn-ghost" onClick={()=>{close();setTimeout(openEdit,50)}}>Edit workout</button>
+                <button className="btn-ghost" onClick={close}>Close</button>
               </div>
             </div>
           </div>
@@ -320,8 +320,8 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
           <div className={styles.modal}>
             <div className={styles.mHead}>
               <div className={styles.mTitle}>
-                <span className={styles.mLabel}>PLAN.detail</span>
-                <span className={styles.mDate}>{selPlanDay.day_name?.toUpperCase()} · {selPlanDay.session_type?.toUpperCase()}</span>
+                <span className={styles.mLabel}>Plan detail</span>
+                <span className={styles.mDate}>{selPlanDay.day_name} · {selPlanDay.session_type}</span>
               </div>
               <button className={styles.mClose} onClick={close}>✕</button>
             </div>
@@ -330,7 +330,7 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                 <div key={i} className={styles.planDetailCard}>
                   <div className={styles.planDetailHeader}>
                     <span className={styles.planDetailName}>{ex.exercise}</span>
-                    <span className={styles.planDetailSets}>{ex.sets??'?'}×{ex.reps??'?'}</span>
+                    <span className={styles.planDetailSets}>{ex.sets ?? '?'} × {ex.reps ?? '?'}</span>
                   </div>
                   <div className={styles.planDetailMeta}>
                     {ex.rir!=null&&<span className={styles.planDetailTag}>RiR {ex.rir}</span>}
@@ -339,7 +339,7 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                   {ex.notes&&<p className={styles.planDetailNotes}>{ex.notes}</p>}
                 </div>
               ))}
-              <div className={styles.actions}><button className="btn-ghost" onClick={close}>CLOSE</button></div>
+              <div className={styles.actions}><button className="btn-ghost" onClick={close}>Close</button></div>
             </div>
           </div>
         )}

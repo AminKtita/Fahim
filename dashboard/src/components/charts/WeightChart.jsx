@@ -17,11 +17,14 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function WeightChart({ data, goalWeight }) {
   if (!data?.length) return (
     <div style={{
-      height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      border: '1px solid var(--border)', borderRadius: 4,
-      fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--faint)',
+      height: 200, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 8,
+      border: '1px dashed var(--border)', borderRadius: 6,
     }}>
-      NO_DATA · log body metrics to see trend
+      <span style={{ fontSize: 20 }}>\u2696</span>
+      <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--faint)' }}>
+        No weight data yet
+      </span>
     </div>
   )
 

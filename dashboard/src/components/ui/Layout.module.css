@@ -1,10 +1,12 @@
 .shell { min-height: 100vh; display: flex; flex-direction: column; }
 
+/* ── Nav bar ── */
 .nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 13px 24px;
+  padding: 0 24px;
+  height: 52px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
   position: sticky;
@@ -12,59 +14,112 @@
   z-index: 100;
 }
 
+/* Logo */
 .logo {
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--accent);
-  letter-spacing: 0.04em;
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  text-decoration: none;
+  flex-shrink: 0;
 }
-.logo span { color: var(--muted); }
+.logoMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--accent);
+  color: #000;
+  font-weight: 800;
+  font-size: 13px;
+  border-radius: 5px;
+  font-family: var(--sans);
+  letter-spacing: -0.02em;
+}
+.logoText {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-left: 8px;
+  letter-spacing: -0.02em;
+}
 
+/* Nav links */
 .links {
   display: flex;
   gap: 2px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .link {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-family: var(--sans);
+  font-weight: 400;
   color: var(--muted);
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: var(--radius-sm);
   transition: color 0.15s, background 0.15s;
+  letter-spacing: 0;
 }
 .link:hover { color: var(--text); background: var(--surface2); }
-.link.active { color: var(--text); }
+.link.active { color: var(--text); font-weight: 500; }
 
-.statusPill {
+/* Nav right */
+.navRight {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  color: var(--accent);
+  flex-shrink: 0;
 }
-
-.dot {
-  width: 7px;
-  height: 7px;
+.syncDot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
-.green  { background: var(--accent); }
-.yellow { background: var(--warn); }
-.blue   { background: var(--blue); }
+.online  { background: var(--accent); }
+.offline { background: var(--warn); }
+.syncLabel {
+  font-size: 11px;
+  color: var(--faint);
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
 
+/* ── Status bar ── */
 .statusBar {
   display: flex;
   align-items: center;
-  gap: 28px;
-  padding: 9px 24px;
+  gap: 0;
+  padding: 0 24px;
+  height: 36px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--surface);
 }
+
+.statusDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 16px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--faint);
+  font-family: var(--mono);
+  letter-spacing: 0.03em;
+  transition: color 0.15s;
+}
+.chipIcon { font-size: 11px; line-height: 1; }
+.chipLabel { }
+.chipActive { color: var(--muted); }
+.chipActive .chipIcon { color: var(--accent); }
+.chipWarn .chipIcon { color: var(--warn); }
 
 .main { flex: 1; }

@@ -1,4 +1,4 @@
-import styles from './MacroBar.module.css'
+import styles from './Macrobar.module.css'
 
 export default function MacroBar({ label, current, target, color = 'accent' }) {
   const pct = target ? Math.min(Math.round((current / target) * 100), 100) : 0

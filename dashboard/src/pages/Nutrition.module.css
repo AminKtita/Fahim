@@ -1,54 +1,168 @@
-.pageHeader { padding: 28px 24px 20px; border-bottom: 1px solid var(--border); }
-.eyebrow { font-family: var(--mono); font-size: 9px; letter-spacing: .15em; color: var(--faint); margin-bottom: 6px; }
-.pageTitle { font-size: 28px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
-
-.todayGrid {
-  display: grid; grid-template-columns: 1fr 1fr 1fr;
-  gap: 1px; background: var(--border); border-bottom: 1px solid var(--border);
+/* ── Page header ── */
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
 }
+.pageTitle { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); margin-bottom: 4px; }
+.pageSub   { font-size: 12px; color: var(--muted); }
 .chartWrap { border-bottom: 1px solid var(--border); }
 
-/* today panel */
-.bigCal { font-size: 38px; font-weight: 700; letter-spacing: -.03em; color: var(--text); line-height: 1; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-.bigCalUnit   { font-size: 15px; color: var(--muted); font-weight: 400; }
-.bigCalTarget { font-size: 14px; color: var(--faint); font-weight: 400; }
-.inlineStatus { font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: var(--radius-sm); }
-.todayBtns { display: flex; gap: 8px; margin-top: 12px; }
-.todayEmpty { display: flex; align-items: center; justify-content: space-between; }
-.todayEmptyMono { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+/* ── Today grid — left wide, right narrow ── */
+.todayGrid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.todayRight {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--border);
+}
 
-/* missed today */
-.missedDay { display: flex; align-items: center; gap: 10px; }
-.missedIcon  { font-size: 16px; color: var(--danger); }
-.missedLabel { font-family: var(--mono); font-size: 11px; color: var(--danger); flex: 1; }
+/* ── Left: today macros ── */
+.todayMacros {
+  background: var(--surface);
+  padding: 20px 22px;
+}
+.todayPanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.todayPanelTitle {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
 
-/* targets */
-.targetRow { display: flex; justify-content: space-between; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--border); }
+/* Status pill (full-size) */
+.statusPill {
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid;
+  letter-spacing: 0.03em;
+}
+.statusHit     { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-border); }
+.statusPartial { background: var(--blue-bg);   color: var(--blue);   border-color: var(--blue-border);   }
+.statusOff     { background: var(--warn-bg);   color: var(--warn);   border-color: var(--warn-border);   }
+.statusMissed  { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
+
+/* Missed state */
+.missedState {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+.missedIcon  { font-size: 18px; color: var(--danger); }
+.missedLabel { font-size: 13px; color: var(--danger); flex: 1; }
+
+/* Macros logged */
+.macrosLogged { display: flex; flex-direction: column; gap: 16px; }
+.calHero {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.calVal    { font-size: 42px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); line-height: 1; }
+.calUnit   { font-size: 15px; color: var(--muted); font-weight: 400; }
+.calTarget { font-size: 14px; color: var(--faint); font-weight: 400; }
+.macroBarGroup { display: flex; flex-direction: column; gap: 2px; }
+.todayBtns { display: flex; gap: 8px; }
+
+/* Empty state */
+.todayEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 20px;
+  gap: 8px;
+  min-height: 200px;
+}
+.todayEmptyIcon { font-size: 28px; }
+.todayEmptyText { font-size: 13px; color: var(--muted); }
+
+/* ── Right: targets panel ── */
+.targetList { display: flex; flex-direction: column; }
+.targetRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
 .targetRow:last-child { border-bottom: none; }
 .targetLabel { font-size: 12px; color: var(--muted); }
-.targetVal   { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--text); }
-.targetUnit  { font-size: 11px; color: var(--muted); margin-left: 2px; }
+.targetVal   { font-size: 16px; font-weight: 600; color: var(--text); font-family: var(--mono); }
+.targetUnit  { font-size: 11px; color: var(--muted); margin-left: 2px; font-weight: 400; }
 
-/* averages */
-.avgGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-radius: var(--radius-sm); overflow: hidden; }
-.avgItem  { background: var(--surface2); padding: 12px 14px; display: flex; flex-direction: column; gap: 5px; }
-.avgLabel { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--faint); text-transform: uppercase; }
-.avgVal   { font-size: 20px; font-weight: 600; color: var(--text); line-height: 1; }
-.avgUnit  { font-size: 11px; color: var(--muted); margin-left: 2px; }
+/* No targets */
+.noTargets {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 16px 0;
+}
+.noTargetsIcon { font-size: 20px; }
+.noTargetsText { font-size: 12px; font-weight: 600; color: var(--muted); }
+.noTargetsSub  { font-size: 11px; color: var(--faint); line-height: 1.5; }
 
-/* status badges */
-.statusHit     { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
-.statusPartial { background: var(--blue-bg);   color: var(--blue);   border: 1px solid var(--blue-border);   }
-.statusOff     { background: var(--warn-bg);   color: var(--warn);   border: 1px solid var(--warn-border);   }
-.statusMissed  { background: #1a0000;          color: var(--danger); border: 1px solid #3a1010;              }
+/* ── Averages ── */
+.avgGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.avgItem {
+  background: var(--surface2);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.avgLabel { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-family: var(--mono); }
+.avgVal   { font-size: 18px; font-weight: 600; color: var(--text); line-height: 1; }
+.avgUnit  { font-size: 10px; color: var(--muted); margin-left: 2px; }
+.noDataHint { font-size: 11px; color: var(--faint); font-family: var(--mono); }
 
-/* heatmap */
-.heatmap { display: grid; grid-template-columns: repeat(15,1fr); gap: 5px; margin-bottom: 12px; }
-.heatCell { aspect-ratio: 1; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+/* ── Heatmap ── */
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  gap: 5px;
+  margin-bottom: 12px;
+}
+.heatCell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
 .heatHit     { background: var(--accent-bg); border: 1px solid var(--accent-border); }
 .heatPartial { background: var(--blue-bg);   border: 1px solid var(--blue-border);   }
 .heatOff     { background: var(--warn-bg);   border: 1px solid var(--warn-border);   }
-.heatMissed  { background: #1a0000;          border: 1px solid #3a1010;              }
+.heatMissed  { background: var(--danger-bg); border: 1px solid var(--danger-border); }
 .heatEmpty   { background: var(--surface2);  border: 1px solid var(--border);        }
 .heatDay { font-family: var(--mono); font-size: 9px; color: var(--faint); }
 .heatHit .heatDay     { color: var(--accent); }
@@ -56,22 +170,69 @@
 .heatOff .heatDay     { color: var(--warn);   }
 .heatMissed .heatDay  { color: var(--danger); }
 
-.heatLegend { display: flex; gap: 16px; font-family: var(--mono); font-size: 9px; flex-wrap: wrap; }
+.heatLegend { display: flex; gap: 16px; font-size: 10px; font-family: var(--mono); flex-wrap: wrap; }
 .lHit     { color: var(--accent); }
 .lPartial { color: var(--blue);   }
 .lOff     { color: var(--warn);   }
 .lMissed  { color: var(--danger); }
 .lEmpty   { color: var(--faint);  }
 
-/* log table */
+/* ── History table ── */
+.emptyTableState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 36px 0;
+}
+.emptyTableIcon { font-size: 24px; }
+.emptyTableText { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+.tableWrap { overflow-x: auto; }
 .logTable { width: 100%; border-collapse: collapse; }
-.logTable th { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); text-align: left; padding: 0 12px 10px 0; border-bottom: 1px solid var(--border); }
-.logTable td { font-size: 12px; color: var(--muted); padding: 8px 12px 8px 0; border-bottom: 1px solid var(--border); }
+.logTable th {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-align: left;
+  padding: 0 12px 10px 0;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.logTable td {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 9px 12px 9px 0;
+  border-bottom: 1px solid var(--border);
+}
 .logTable tr:last-child td { border-bottom: none; }
-.dateCell { color: var(--text) !important; font-family: var(--mono); }
+.dateCell   { color: var(--text) !important; font-family: var(--mono); font-weight: 600; }
 .actionCell { white-space: nowrap; }
-.iconBtn { font-family: var(--mono); font-size: 9px; color: var(--blue); background: none; border: none; padding: 2px 4px; cursor: pointer; border-radius: 2px; margin-right: 4px; }
-.iconBtn:hover { background: var(--blue-bg); }
-.statusPill { font-family: var(--mono); font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: var(--radius-sm); }
+.rowBtn {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--blue);
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 3px;
+  margin-right: 2px;
+}
+.rowBtn:hover { background: var(--blue-bg); }
+
+/* Small table status pill */
+.statusPillSm {
+  font-size: 9px;
+  font-family: var(--mono);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 20px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
 .hit  { color: var(--accent) !important; }
 .miss { color: var(--danger) !important; }

@@ -1,139 +1,247 @@
+/* ── Page header ── */
 .pageHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 28px 24px 20px;
+  padding: 24px 24px 20px;
   border-bottom: 1px solid var(--border);
-}
-.eyebrow {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  color: var(--faint);
-  margin-bottom: 6px;
+  gap: 16px;
 }
 .pageTitle {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
   margin-bottom: 4px;
 }
-.pageSub {
-  font-size: 12px;
-  color: var(--faint);
-}
+.pageSub { font-size: 12px; color: var(--muted); }
 .formWrap { border-bottom: 1px solid var(--border); }
 
-/* GRID */
+/* ── Goals grid ── */
 .goalsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 1px;
   background: var(--border);
   border-bottom: 1px solid var(--border);
 }
 
+/* ── Empty state ── */
 .emptyCard {
   background: var(--surface);
-  padding: 32px 24px;
+  padding: 48px 24px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
   grid-column: 1 / -1;
 }
-.emptyMono { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-.emptySub  { font-size: 11px; color: var(--faint); }
+.emptyIcon  { font-size: 32px; margin-bottom: 4px; }
+.emptyTitle { font-size: 15px; font-weight: 600; color: var(--text); }
+.emptySub   { font-size: 12px; color: var(--muted); max-width: 340px; line-height: 1.6; }
 
-/* GOAL CARD */
+/* ── Goal card ── */
 .goalCard {
   background: var(--surface);
-  padding: 20px 22px;
+  padding: 22px 22px 20px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
+.goalCardCompleted {
+  opacity: 0.8;
+  border-left: 3px solid var(--accent-border);
+}
+.goalCardCompleted:hover { opacity: 1; }
 
-.cardTop {
+/* Card header */
+.cardHeader {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+.goalTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  flex: 1;
+}
+.cardHeaderRight { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.completedBadge {
+  font-size: 10px;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+  background: var(--accent-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+/* Overflow menu */
+.overflowWrap { position: relative; }
+.overflowBtn {
+  background: none;
+  border: none;
+  color: var(--faint);
+  padding: 2px 6px;
+  font-size: 16px;
+  letter-spacing: 2px;
+  border-radius: 4px;
+  line-height: 1;
+  cursor: pointer;
+}
+.overflowBtn:hover { background: var(--surface2); color: var(--muted); }
+.overflowMenu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 4px;
+  min-width: 160px;
+  z-index: 50;
+  box-shadow: var(--shadow-md);
+}
+.overflowItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--sans);
+  color: var(--muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  letter-spacing: 0;
+}
+.overflowItem:hover { background: var(--surface); color: var(--text); }
+.overflowDivider { height: 1px; background: var(--border); margin: 4px 8px; }
+.overflowDanger { color: var(--danger) !important; }
+.overflowDanger:hover { background: var(--danger-bg) !important; }
+
+/* Hero metric */
+.heroMetric {
+  display: flex;
   align-items: baseline;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.heroCurrentVal {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  line-height: 1;
+}
+.heroSep    { font-size: 16px; color: var(--faint); }
+.heroTargetVal {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: -0.02em;
+}
+.heroUnit {
+  font-size: 13px;
+  color: var(--faint);
+  margin-left: 2px;
+}
+
+/* Progress bar */
+.barWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 10px;
 }
-.goalTitle { font-size: 14px; font-weight: 600; color: var(--text); }
-
-.goalPct { font-family: var(--mono); font-size: 13px; font-weight: 700; }
-.pctAccent { color: var(--accent); }
-.pctBlue   { color: var(--blue);   }
-.pctWarn   { color: var(--warn);   }
-
 .barTrack {
-  height: 3px;
+  flex: 1;
+  height: 6px;
   background: var(--surface2);
-  border-radius: 2px;
+  border-radius: 3px;
   overflow: hidden;
-  margin-bottom: 9px;
 }
 .barFill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: 3px;
   transition: width 0.5s ease;
 }
 .barAccent { background: var(--accent); }
 .barBlue   { background: var(--blue);   }
 .barWarn   { background: var(--warn);   }
+.barPct {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--mono);
+  min-width: 36px;
+  text-align: right;
+}
+.pctAccent { color: var(--accent); }
+.pctBlue   { color: var(--blue);   }
+.pctWarn   { color: var(--warn);   }
 
-.cardDetail {
+/* Meta row */
+.metaRow {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 14px;
+  align-items: center;
+  margin-bottom: 16px;
+  min-height: 18px;
 }
-.detailVal {
-  font-family: var(--mono);
+.metaRemaining {
   font-size: 11px;
   color: var(--muted);
+  font-family: var(--mono);
 }
-.deadline { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+.metaDeadline {
+  font-size: 11px;
+  color: var(--faint);
+  font-family: var(--mono);
+}
 .deadlineWarn { color: var(--warn); }
 
-/* ACTIONS */
-.cardActions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.cardActions button {
-  padding: 4px 10px;
-  font-size: 10px;
+/* Update button */
+.updateBtn {
+  width: 100%;
+  padding: 9px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  margin-top: 4px;
 }
 
+/* Progress input row */
 .progressRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-top: 4px;
 }
-.progressRow button { padding: 5px 12px; font-size: 10px; }
+.progressRow button { flex-shrink: 0; }
 
+/* Delete confirm */
 .confirmRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  padding: 8px 10px;
-  background: var(--warn-bg);
-  border: 1px solid var(--warn-border);
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
   border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.confirmText {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--warn);
-  flex: 1;
-}
-.confirmRow button { padding: 4px 10px; font-size: 10px; }
+.confirmText { font-size: 12px; color: var(--danger); }
+.confirmBtns { display: flex; gap: 8px; }
 
-/* EDIT FORM */
-.editForm { }
+/* Edit form */
+.editForm { display: flex; flex-direction: column; gap: 0; }
 .editGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -148,54 +256,34 @@
 }
 .editRow:last-child { margin-bottom: 0; }
 .editLabel {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.1em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--faint);
+  font-family: var(--mono);
 }
-.editForm .cardActions { margin-top: 4px; }
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.cardActions button { padding: 7px 14px; font-size: 11px; }
 
-/* ARCHIVE */
+/* Archive rows */
 .archiveRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
+  padding: 11px 0;
   border-bottom: 1px solid var(--border);
+  gap: 12px;
 }
 .archiveRow:last-child { border-bottom: none; }
-.archiveLeft  { display: flex; align-items: center; gap: 10px; }
-.archiveRight { display: flex; align-items: center; gap: 10px; }
-
-.archiveBadge {
-  font-family: var(--mono);
-  font-size: 10px;
-  width: 20px;
-  text-align: center;
-}
-.badgeGreen { color: var(--accent); }
-.badgeWarn  { color: var(--faint);  }
-
+.archiveLeft  { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.archiveRight { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .archiveTitle { font-size: 13px; color: var(--muted); }
-.archiveMeta  { font-family: var(--mono); font-size: 10px; color: var(--faint); }
-.archiveDate  { font-family: var(--mono); font-size: 10px; color: var(--faint); }
-
-/* completed card variant */
-.goalCardCompleted {
-  background: var(--surface);
-  border-left: 2px solid var(--accent-border);
-  opacity: 0.85;
-}
-.goalCardCompleted:hover { opacity: 1; }
-
-.completedBadge {
-  font-family: var(--mono);
-  font-size: 8px;
-  letter-spacing: 0.1em;
-  background: var(--accent-bg);
-  color: var(--accent);
-  border: 1px solid var(--accent-border);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-}
+.archiveMeta  { font-size: 11px; color: var(--faint); font-family: var(--mono); }
+.archiveDate  { font-size: 11px; color: var(--faint); font-family: var(--mono); }

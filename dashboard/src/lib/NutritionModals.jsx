@@ -42,10 +42,10 @@ export function deriveNutStatus(n, targets) {
 }
 
 const STATUS_CFG = {
-  hit:     { label:'HIT TARGETS', cls: nutStyles.statusHit },
-  partial: { label:'PARTIAL',     cls: nutStyles.statusPartial },
-  off:     { label:'OFF TARGET',  cls: nutStyles.statusOff },
-  missed:  { label:'MISSED',      cls: nutStyles.statusMissed },
+  hit:     { label:'On target', cls: nutStyles.statusHit },
+  partial: { label:'Partial',   cls: nutStyles.statusPartial },
+  off:     { label:'Off plan',  cls: nutStyles.statusOff },
+  missed:  { label:'Missed',    cls: nutStyles.statusMissed },
 }
 
 export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
@@ -138,7 +138,7 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
           <div className={styles.modal}>
             <div className={styles.mHead}>
               <div className={styles.mTitle}>
-                <span className={styles.mLabel}>{editMode?'EDIT_NUTRITION':'LOG_NUTRITION'}</span>
+                <span className={styles.mLabel}>{editMode?'Edit nutrition':'Log nutrition'}</span>
                 <span className={styles.mDate}>{dayjs(selDate).format('dddd, MMMM D YYYY')}</span>
               </div>
               <button className={styles.mClose} onClick={close}>✕</button>
@@ -147,7 +147,7 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
 
               {/* mode tabs */}
               <div className={styles.statusBtns}>
-                {[{k:'log',l:'LOG NUTRITION'},{k:'missed',l:'MISSED TODAY'}].map(t=>(
+                {[{k:'log',l:'Log nutrition'},{k:'missed',l:'Mark as missed'}].map(t=>(
                   <button key={t.k} onClick={()=>setNMode(t.k)}
                     className={`${styles.statusBtn} ${nMode===t.k?`${styles.active} ${styles[t.k==='log'?'workout':'missed']}`:''}`}>{t.l}</button>
                 ))}
@@ -162,7 +162,7 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
                   {/* plan targets strip */}
                   {Object.keys(targets).length>0 && (
                     <div className={nutStyles.targetsStrip}>
-                      <span className={nutStyles.targetsLabel}>PLAN TARGETS →</span>
+                      <span className={nutStyles.targetsLabel}>Plan targets</span>
                       {[{k:'calories',u:'kcal'},{k:'protein_g',u:'g'},{k:'carbs_g',u:'g'},{k:'fat_g',u:'g'}]
                         .filter(t=>targets[t.k])
                         .map(t=>(
@@ -197,7 +197,7 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
                   {/* live status preview */}
                   {previewStatus && (
                     <div className={nutStyles.previewRow}>
-                      <span className={nutStyles.previewLabel}>AUTO STATUS →</span>
+                      <span className={nutStyles.previewLabel}>Status preview</span>
                       <span className={`${nutStyles.statusBadge} ${STATUS_CFG[previewStatus]?.cls}`}>
                         {STATUS_CFG[previewStatus]?.label}
                       </span>
@@ -210,21 +210,21 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
                 {error && <span className={styles.error}>{error}</span>}
                 {editMode && !confirmDel && (
                   <button className="btn-ghost" style={{color:'var(--danger)',borderColor:'transparent',marginRight:'auto'}}
-                    onClick={()=>setConfirmDel(true)}>DELETE</button>
+                    onClick={()=>setConfirmDel(true)}>Delete</button>
                 )}
                 {confirmDel && (
                   <>
-                    <span style={{fontFamily:'var(--mono)',fontSize:10,color:'var(--warn)',flex:1}}>Delete this nutrition log?</span>
-                    <button className="btn-danger" onClick={handleDelete} disabled={saving}>{saving?'…':'CONFIRM DELETE'}</button>
-                    <button className="btn-ghost" onClick={()=>setConfirmDel(false)}>CANCEL</button>
+                    <span style={{fontSize:12,color:'var(--warn)',flex:1}}>Delete this nutrition log?</span>
+                    <button className="btn-danger" onClick={handleDelete} disabled={saving}>{saving?'…':'Confirm delete'}</button>
+                    <button className="btn-ghost" onClick={()=>setConfirmDel(false)}>Cancel</button>
                   </>
                 )}
                 {!confirmDel && (
                   <>
                     <button onClick={handleSubmit} disabled={saving}>
-                      {saving?'SAVING…':nMode==='missed'?'MARK MISSED →':editMode?'SAVE CHANGES →':'SAVE LOG →'}
+                      {saving?'Saving…':nMode==='missed'?'Mark as missed':editMode?'Save changes':'Save log'}
                     </button>
-                    <button className="btn-ghost" onClick={close}>CANCEL</button>
+                    <button className="btn-ghost" onClick={close}>Cancel</button>
                   </>
                 )}
               </div>
@@ -237,7 +237,7 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
           <div className={styles.modal}>
             <div className={styles.mHead}>
               <div className={styles.mTitle}>
-                <span className={styles.mLabel}>NUTRITION.detail</span>
+                <span className={styles.mLabel}>Nutrition detail</span>
                 <span className={styles.mDate}>{dayjs(selDate).format('dddd, MMMM D YYYY')}</span>
               </div>
               <button className={styles.mClose} onClick={close}>✕</button>
@@ -283,13 +283,13 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
 
               {selNutrition.notes && selNutrition.notes !== '__MISSED__' && (
                 <div className={styles.notesBlock}>
-                  <div className={styles.sectionMono}>NOTES</div>
+                  <div className={styles.sectionMono}>Notes</div>
                   <p className={styles.notesText}>{selNutrition.notes}</p>
                 </div>
               )}
               <div className={styles.actions}>
-                <button className="btn-ghost" onClick={()=>{close();setTimeout(openEdit,50)}}>EDIT LOG</button>
-                <button className="btn-ghost" onClick={close}>CLOSE</button>
+                <button className="btn-ghost" onClick={()=>{close();setTimeout(openEdit,50)}}>Edit log</button>
+                <button className="btn-ghost" onClick={close}>Close</button>
               </div>
             </div>
           </div>

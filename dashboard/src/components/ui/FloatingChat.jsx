@@ -10,14 +10,22 @@ export default function FloatingChat() {
       {open && (
         <div className={styles.panelWrap}>
           <div className={styles.panelHeader}>
-            <span className={styles.panelTitle}>$ fahim.chat</span>
-            <button className={styles.closeBtn} onClick={() => setOpen(false)}>✕</button>
+            <div className={styles.panelTitleGroup}>
+              <span className={styles.panelDot} />
+              <span className={styles.panelTitle}>Fahim</span>
+              <span className={styles.panelSub}>AI coach</span>
+            </div>
+            <button className={styles.closeBtn} onClick={() => setOpen(false)} title="Close">✕</button>
           </div>
           <ChatPanel compact />
         </div>
       )}
-      <button className={styles.fab} onClick={() => setOpen(o => !o)} title="Chat with Fahim">
-        {open ? '✕' : '🔩'}
+      <button
+        className={`${styles.fab} ${open ? styles.fabOpen : ''}`}
+        onClick={() => setOpen(o => !o)}
+        title={open ? 'Close Fahim' : 'Chat with Fahim'}
+      >
+        {open ? '✕' : 'F'}
       </button>
     </>
   )

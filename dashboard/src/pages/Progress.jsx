@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useApi } from '../hooks/useApi'
-import { getWeightTrend, getLatestMetrics, getSummaries } from '../lib/api'
+import { getWeightTrend, getLatestMetrics, getSummaries, getExerciseHistory, getWorkouts } from '../lib/api'
 import Panel from '../components/ui/Panel'
 import SectionDivider from '../components/ui/SectionDivider'
 import MetricsForm from '../components/forms/MetricsForm'
 import WeightChart from '../components/charts/WeightChart'
 import dayjs from 'dayjs'
 import styles from './Progress.module.css'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 const MEASUREMENTS = [
   { key: 'waist_cm',  label: 'Waist',  unit: 'cm' },
@@ -16,77 +17,225 @@ const MEASUREMENTS = [
   { key: 'hips_cm',   label: 'Hips',   unit: 'cm' },
 ]
 
+const COMMON_LIFTS = ['bench press', 'squat', 'deadlift', 'overhead press', 'row', 'pull up']
+
 export default function Progress() {
-  const { data: trend,   refetch: refetchTrend }   = useApi(() => getWeightTrend(90))
-  const { data: latest,  refetch: refetchLatest }  = useApi(getLatestMetrics)
-  const { data: summaries }                         = useApi(() => getSummaries(30))
-  const [showForm, setShowForm] = useState(false)
+  const { data: trend,     refetch: refetchTrend }   = useApi(() => getWeightTrend(90))
+  const { data: latest,    refetch: refetchLatest }  = useApi(getLatestMetrics)
+  const { data: summaries }                          = useApi(() => getSummaries(30))
+  const { data: workouts }                           = useApi(() => getWorkouts(90))
+  const [showForm,       setShowForm]       = useState(false)
+  const [selectedLift,   setSelectedLift]   = useState(null)
+  const { data: liftHistory }               = useApi(
+    selectedLift ? () => getExerciseHistory(selectedLift, 30) : null,
+    [selectedLift]
+  )
 
   const refetch = () => { refetchTrend(); refetchLatest() }
 
-  // streak consistency from summaries
+  // Consistency from summaries
   const workoutDays = summaries?.filter(s => s.workout_done).length ?? 0
   const totalDays   = summaries?.length ?? 0
   const consistency = totalDays ? Math.round((workoutDays / totalDays) * 100) : null
 
+  // Previous weight for delta
+  const weightHistory = [...(trend ?? [])].sort((a,b) => a.date.localeCompare(b.date))
+  const latestWeight  = weightHistory[weightHistory.length - 1]?.weight_kg ?? null
+  const prevWeight    = weightHistory[weightHistory.length - 2]?.weight_kg ?? null
+  const weightDelta   = latestWeight && prevWeight ? (latestWeight - prevWeight).toFixed(1) : null
+
+  // Detect exercises user has actually logged
+  const loggedExercises = [...new Set(
+    workouts?.flatMap(w => w.sets?.map(s => s.exercise?.toLowerCase()) ?? []).filter(Boolean) ?? []
+  )].sort()
+
+  // Lift history chart data
+  const liftChartData = liftHistory?.map(h => ({
+    label: dayjs(h.date).format('MMM D'),
+    weight: h.max_weight_kg ?? null,
+    reps: h.reps,
+  })).filter(d => d.weight != null) ?? []
+
+  // Has enough data checks
+  const hasTrendData     = (trend?.length ?? 0) >= 2
+  const hasLiftData      = liftChartData.length >= 2
+  const hasConsistency   = (summaries?.length ?? 0) > 0
+  const hasMeasurements  = latest && MEASUREMENTS.some(m => latest[m.key] != null)
+
   return (
     <div>
+      {/* PAGE HEADER */}
       <div className={styles.pageHeader}>
         <div>
-          <div className={styles.eyebrow}>PROGRESS.db</div>
-          <div className={styles.pageTitle}>Body progress</div>
+          <div className={styles.pageTitle}>Progress</div>
+          <div className={styles.pageSub}>Track body composition, strength, and consistency over time.</div>
         </div>
-        <button onClick={() => setShowForm(v => !v)}>
-          {showForm ? 'CANCEL ✕' : '+ LOG_METRICS'}
+        <button className={showForm ? 'btn-ghost' : 'btn-accent'} onClick={() => setShowForm(v => !v)}>
+          {showForm ? 'Cancel' : '+ Log metrics'}
         </button>
       </div>
 
+      {/* METRICS FORM */}
       {showForm && (
         <>
-          <SectionDivider label="LOG_BODY_METRICS.input" />
+          <SectionDivider label="Log body metrics" />
           <div className={styles.formWrap}>
-            <Panel label="METRICS_LOGGER">
+            <Panel label="Body metrics">
               <MetricsForm onSaved={() => { refetch(); setShowForm(false) }} />
             </Panel>
           </div>
         </>
       )}
 
-      {/* SUMMARY STATS */}
-      <SectionDivider label="CURRENT_STATS.latest" />
+      {/* STATS ROW */}
+      <SectionDivider label="Current stats" />
       <div className={styles.statsGrid}>
-        {[
-          { label: 'Current weight',  val: latest?.weight_kg,    unit: 'kg',  key: null },
-          { label: 'Body fat',        val: latest?.body_fat_pct,  unit: '%',   key: null },
-          { label: 'Training consistency', val: consistency,     unit: '%',   key: null },
-          { label: 'Entries (90d)',   val: trend?.length ?? 0,   unit: '',    key: null },
-        ].map(s => (
-          <div key={s.label} className={styles.statBox}>
-            <div className={styles.statLabel}>{s.label}</div>
-            <div className={styles.statVal}>
-              {s.val ?? '—'}
-              {s.val != null && <span className={styles.statUnit}>{s.unit}</span>}
-            </div>
+        <div className={styles.statBox}>
+          <div className={styles.statLabel}>Current weight</div>
+          <div className={styles.statVal}>
+            {latest?.weight_kg ?? '—'}
+            {latest?.weight_kg && <span className={styles.statUnit}>kg</span>}
           </div>
-        ))}
+          {weightDelta !== null && (
+            <div className={`${styles.statDelta} ${Number(weightDelta) > 0 ? styles.deltaUp : styles.deltaDown}`}>
+              {Number(weightDelta) > 0 ? '↑' : '↓'} {Math.abs(weightDelta)}kg vs previous
+            </div>
+          )}
+        </div>
+        <div className={styles.statBox}>
+          <div className={styles.statLabel}>Body fat</div>
+          <div className={styles.statVal}>
+            {latest?.body_fat_pct ?? '—'}
+            {latest?.body_fat_pct != null && <span className={styles.statUnit}>%</span>}
+          </div>
+        </div>
+        <div className={styles.statBox}>
+          <div className={styles.statLabel}>Training consistency</div>
+          <div className={styles.statVal}>
+            {consistency ?? '—'}
+            {consistency != null && <span className={styles.statUnit}>%</span>}
+          </div>
+          {hasConsistency && (
+            <div className={styles.statSub}>{workoutDays} of {totalDays} days trained</div>
+          )}
+        </div>
+        <div className={styles.statBox}>
+          <div className={styles.statLabel}>Measurements logged</div>
+          <div className={styles.statVal}>{trend?.length ?? 0}</div>
+          <div className={styles.statSub}>weight entries</div>
+        </div>
+      </div>
+
+      {/* STRENGTH PROGRESS */}
+      <SectionDivider label="Strength progress" />
+      <div className={styles.strengthSection}>
+        {/* Exercise selector */}
+        <div className={styles.liftSelector}>
+          {COMMON_LIFTS.filter(l => loggedExercises.includes(l)).map(l => (
+            <button
+              key={l}
+              className={`${styles.liftChip} ${selectedLift === l ? styles.liftChipActive : ''}`}
+              onClick={() => setSelectedLift(selectedLift === l ? null : l)}
+            >
+              {l}
+            </button>
+          ))}
+          {loggedExercises.filter(e => !COMMON_LIFTS.includes(e)).map(e => (
+            <button
+              key={e}
+              className={`${styles.liftChip} ${selectedLift === e ? styles.liftChipActive : ''}`}
+              onClick={() => setSelectedLift(selectedLift === e ? null : e)}
+            >
+              {e}
+            </button>
+          ))}
+          {loggedExercises.length === 0 && (
+            <span className={styles.emptyHint}>No exercises logged yet</span>
+          )}
+        </div>
+
+        {selectedLift && (
+          <div className={styles.liftChartWrap}>
+            {!hasLiftData ? (
+              <div className={styles.emptyState}>
+                <span className={styles.emptyStateIcon}>📈</span>
+                <span className={styles.emptyStateText}>Not enough data for {selectedLift} yet</span>
+                <span className={styles.emptyStateSub}>Log at least 2 sessions with this exercise to see a trend.</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={liftChartData} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: 'var(--faint)', fontSize: 9, fontFamily: 'var(--mono)' }}
+                    axisLine={false} tickLine={false}
+                    interval={Math.floor(liftChartData.length / 5)}
+                  />
+                  <YAxis
+                    tick={{ fill: 'var(--faint)', fontSize: 9, fontFamily: 'var(--mono)' }}
+                    axisLine={false} tickLine={false} width={36}
+                    tickFormatter={v => `${v}kg`}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null
+                      return (
+                        <div style={{ background:'var(--surface2)', border:'1px solid var(--border2)', borderRadius:6, padding:'8px 12px', fontFamily:'var(--mono)', fontSize:11 }}>
+                          <div style={{ color:'var(--muted)', marginBottom:3 }}>{label}</div>
+                          <div style={{ color:'var(--accent)', fontWeight:600 }}>{payload[0].value}kg</div>
+                        </div>
+                      )
+                    }}
+                  />
+                  <Line
+                    type="monotone" dataKey="weight"
+                    stroke="var(--accent)" strokeWidth={2}
+                    dot={{ fill: 'var(--accent)', r: 3, strokeWidth: 0 }}
+                    activeDot={{ r: 5, fill: 'var(--accent)' }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )}
+
+        {!selectedLift && loggedExercises.length > 0 && (
+          <div className={styles.liftPrompt}>Select an exercise above to see its strength trend</div>
+        )}
       </div>
 
       {/* WEIGHT TREND */}
-      <SectionDivider label="WEIGHT_TREND.90d" />
+      <SectionDivider label="Weight trend" />
       <div className={styles.chartWrap}>
-        <Panel label="BODYWEIGHT.line_chart">
-          <WeightChart data={trend ?? []} />
+        <Panel label="Body weight · 90 days" noPad>
+          <div style={{padding:'12px 16px 8px'}}>
+            {!hasTrendData ? (
+              <div className={styles.emptyState} style={{height:180}}>
+                <span className={styles.emptyStateIcon}>⚖</span>
+                <span className={styles.emptyStateText}>Not enough weight data yet</span>
+                <span className={styles.emptyStateSub}>Log at least 2 body metric entries to see your weight trend.</span>
+              </div>
+            ) : (
+              <WeightChart data={trend ?? []} />
+            )}
+          </div>
         </Panel>
       </div>
 
-      {/* MEASUREMENTS */}
-      <SectionDivider label="MEASUREMENTS.latest" />
+      {/* MEASUREMENTS + CONSISTENCY + HISTORY */}
+      <SectionDivider label="Measurements & history" />
       <div className={styles.metricsGrid}>
-        <Panel label="BODY_MEASUREMENTS.current">
-          {latest && Object.values(latest).some(Boolean) ? (
+        <Panel label="Body measurements">
+          {!hasMeasurements ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyStateIcon}>📏</span>
+              <span className={styles.emptyStateText}>No measurements logged</span>
+              <span className={styles.emptyStateSub}>Log your body metrics above to track chest, waist, arm, and more.</span>
+            </div>
+          ) : (
             <div>
               <div className={styles.lastLogged}>
-                last logged: {latest.date ? dayjs(latest.date).format('MMM D, YYYY') : '—'}
+                Last logged: {latest?.date ? dayjs(latest.date).format('MMM D, YYYY') : '—'}
               </div>
               <div className={styles.measureList}>
                 {MEASUREMENTS.map(m => (
@@ -97,7 +246,7 @@ export default function Progress() {
                     </span>
                   </div>
                 ))}
-                {latest.body_fat_pct != null && (
+                {latest?.body_fat_pct != null && (
                   <div className={styles.measureRow}>
                     <span className={styles.measureLabel}>Body fat</span>
                     <span className={styles.measureVal}>{latest.body_fat_pct}%</span>
@@ -105,42 +254,50 @@ export default function Progress() {
                 )}
               </div>
             </div>
-          ) : (
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--faint)' }}>
-              NO_DATA · log body metrics to see measurements
-            </span>
           )}
         </Panel>
 
-        <Panel label="TRAINING_CONSISTENCY.30d">
-          <div className={styles.consistencyWrap}>
-            <div className={styles.bigPct}>
-              {consistency ?? '—'}
-              {consistency != null && <span className={styles.bigPctUnit}>%</span>}
+        <Panel label="Training consistency · 30 days">
+          {!hasConsistency ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyStateIcon}>📅</span>
+              <span className={styles.emptyStateText}>No data yet</span>
+              <span className={styles.emptyStateSub}>Start logging workouts to track your training consistency.</span>
             </div>
-            <div className={styles.consistencySub}>
-              {workoutDays} workout days out of {totalDays} tracked
+          ) : (
+            <div className={styles.consistencyWrap}>
+              <div className={styles.bigPct}>
+                {consistency ?? '—'}
+                {consistency != null && <span className={styles.bigPctUnit}>%</span>}
+              </div>
+              <div className={styles.consistencySub}>
+                {workoutDays} sessions in {totalDays} days tracked
+              </div>
+              <div className={styles.dotGrid}>
+                {summaries?.slice().reverse().map(s => (
+                  <div
+                    key={s.date}
+                    title={`${dayjs(s.date).format('MMM D')} · ${s.workout_done ? 'trained' : 'rest'}`}
+                    className={`${styles.calDot} ${s.workout_done ? styles.dotDone : styles.dotRest}`}
+                  />
+                ))}
+              </div>
+              <div className={styles.dotLegend}>
+                <span className={styles.ldDone}>● Trained</span>
+                <span className={styles.ldRest}>○ Rest</span>
+              </div>
             </div>
-
-            {/* mini calendar dots */}
-            <div className={styles.dotGrid}>
-              {summaries?.slice().reverse().map(s => (
-                <div
-                  key={s.date}
-                  title={`${s.date} · ${s.workout_done ? 'trained' : 'rest'}`}
-                  className={`${styles.calDot} ${s.workout_done ? styles.dotDone : styles.dotRest}`}
-                />
-              ))}
-            </div>
-            <div className={styles.dotLegend}>
-              <span className={styles.ldDone}>■ trained</span>
-              <span className={styles.ldRest}>■ rest</span>
-            </div>
-          </div>
+          )}
         </Panel>
 
-        <Panel label="WEIGHT_HISTORY.table">
-          {trend?.length ? (
+        <Panel label="Weight history">
+          {!(trend?.length) ? (
+            <div className={styles.emptyState}>
+              <span className={styles.emptyStateIcon}>📋</span>
+              <span className={styles.emptyStateText}>No weight entries</span>
+              <span className={styles.emptyStateSub}>Log body weight to see your history here.</span>
+            </div>
+          ) : (
             <div className={styles.tableWrap}>
               <table className={styles.wTable}>
                 <thead>
@@ -170,10 +327,6 @@ export default function Progress() {
                 </tbody>
               </table>
             </div>
-          ) : (
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--faint)' }}>
-              NO_DATA · log body weight to see history
-            </span>
           )}
         </Panel>
       </div>

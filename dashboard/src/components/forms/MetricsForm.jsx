@@ -70,9 +70,9 @@ export default function MetricsForm({ onSaved }) {
       </div>
       <div className={styles.actions}>
         {error && <span className={styles.error}>{error}</span>}
-        {saved  && <span className={styles.success}>SAVED ✓</span>}
-        <button onClick={handleSubmit} disabled={saving}>
-          {saving ? 'SAVING…' : 'SAVE_METRICS →'}
+        {saved  && <span className={styles.success}>✓ Saved</span>}
+        <button className="btn-accent" onClick={handleSubmit} disabled={saving}>
+          {saving ? 'Saving…' : 'Save metrics'}
         </button>
       </div>
     </div>

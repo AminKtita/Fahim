@@ -1,23 +1,38 @@
 .card {
   background: var(--surface);
-  padding: 16px 20px;
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.icon {
+  font-size: 13px;
+  line-height: 1;
 }
 
 .label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--faint);
-  margin-bottom: 6px;
+  font-family: var(--mono);
 }
 
 .value {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--text);
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .unit {
@@ -25,15 +40,25 @@
   color: var(--muted);
   font-weight: 400;
   margin-left: 3px;
+  letter-spacing: 0;
 }
+
+.delta {
+  font-size: 10px;
+  font-family: var(--mono);
+  margin-top: 2px;
+}
+.delta_up      { color: var(--accent); }
+.delta_down    { color: var(--danger); }
+.delta_neutral { color: var(--faint); }
 
 .sub {
   font-size: 10px;
-  margin-top: 5px;
+  margin-top: 2px;
   font-family: var(--mono);
+  letter-spacing: 0.03em;
 }
-
-.neutral { color: var(--muted); }
+.neutral  { color: var(--muted); }
 .positive { color: var(--accent); }
 .warning  { color: var(--warn); }
 .info     { color: var(--blue); }

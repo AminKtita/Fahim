@@ -2,10 +2,11 @@ import { useApi } from '../hooks/useApi'
 import { getProfile, getWorkouts, getNutrition, getGoals, getLatestMetrics, getPlan } from '../lib/api'
 import { useStatus } from '../lib/StatusContext'
 import { getPlanDayForDate } from '../lib/WorkoutModals'
+import { deriveNutStatus } from '../lib/NutritionModals'
 import Panel from '../components/ui/Panel'
 import StatCard from '../components/ui/StatCard'
 import SectionDivider from '../components/ui/SectionDivider'
-import GoalRow from '../components/ui/GoalRow'
+import GoalRow from '../components/ui/Goalrow'
 import Badge from '../components/ui/Badge'
 import VolumeChart from '../components/charts/VolumeChart'
 import ChatPanel from '../components/ui/ChatPanel'
@@ -28,17 +29,59 @@ export default function Overview() {
   const todayWorkout = workouts?.find(w => w.date === today)
   const streak       = status?.streak ?? 0
 
-  // Current weight — from body_metrics table, not dead daily_summary
   const currentWeight = metrics?.weight_kg ?? null
+
+  // ── Trend deltas ────────────────────────────────────────────────
+  const lastWeekWeight = null // body metrics history not fetched here — show only latest
 
   const avgProtein = nutrition?.length
     ? Math.round(nutrition.filter(n => n.calories).reduce((a, n) => a + (n.protein_g || 0), 0) /
         Math.max(nutrition.filter(n => n.calories).length, 1))
     : null
 
-  // ── Notification logic ─────────────────────────────────────────
-  // Missed workout: today has a planned session but nothing logged yet, OR
-  // explicitly marked missed. Also look back 1-2 past planned days.
+  // Sessions this week vs last week
+  const thisWeekStart = dayjs().startOf('week')
+  const lastWeekStart = thisWeekStart.subtract(1, 'week')
+  const sessionsThisWeek = workouts?.filter(w => {
+    const d = dayjs(w.date)
+    return d.isAfter(thisWeekStart.subtract(1, 'day')) && !['missed','rest'].includes(w.session_type)
+  }).length ?? 0
+  const sessionsLastWeek = workouts?.filter(w => {
+    const d = dayjs(w.date)
+    return d.isAfter(lastWeekStart.subtract(1, 'day')) && d.isBefore(thisWeekStart) && !['missed','rest'].includes(w.session_type)
+  }).length ?? 0
+  const sessionDelta = sessionsThisWeek - sessionsLastWeek
+
+  // Protein delta: this week avg vs last week avg
+  const proteinThisWeek = nutrition?.filter(n => {
+    const d = dayjs(n.date); return d.isAfter(thisWeekStart.subtract(1, 'day')) && n.protein_g
+  })
+  const proteinLastWeek = nutrition?.filter(n => {
+    const d = dayjs(n.date); return d.isAfter(lastWeekStart.subtract(1, 'day')) && d.isBefore(thisWeekStart) && n.protein_g
+  })
+  const avgProteinThisWeek = proteinThisWeek?.length ? Math.round(proteinThisWeek.reduce((a,n) => a + n.protein_g, 0) / proteinThisWeek.length) : null
+  const avgProteinLastWeek = proteinLastWeek?.length ? Math.round(proteinLastWeek.reduce((a,n) => a + n.protein_g, 0) / proteinLastWeek.length) : null
+  const proteinDelta = (avgProteinThisWeek != null && avgProteinLastWeek != null) ? avgProteinThisWeek - avgProteinLastWeek : null
+
+  // ── Today's planned session ─────────────────────────────────────
+  const todayPlan = getPlanDayForDate(plan, today)
+  const todayExercises = todayPlan?.exercises?.slice(0, 3) ?? []
+  const hasTodaySession = !!todayPlan
+  const todayLogged = !!todayWorkout && !['missed','rest'].includes(todayWorkout.session_type?.toLowerCase())
+  const sessionType = (todayPlan?.session_type || todayWorkout?.session_type || '').toLowerCase()
+  const sessionLabel = sessionType ? sessionType.charAt(0).toUpperCase() + sessionType.slice(1) : 'Training'
+
+  // ── Today's nutrition progress ──────────────────────────────────
+  const targets = plan?.nutrition_targets
+  const nutStatus = deriveNutStatus(todayNut, targets)
+  const calTarget  = targets?.calories  ?? null
+  const protTarget = targets?.protein_g ?? null
+  const calLogged  = todayNut?.calories  ?? 0
+  const protLogged = todayNut?.protein_g ?? 0
+  const calPct  = calTarget  ? Math.min(100, Math.round((calLogged  / calTarget)  * 100)) : null
+  const protPct = protTarget ? Math.min(100, Math.round((protLogged / protTarget) * 100)) : null
+
+  // ── Alert logic ─────────────────────────────────────────────────
   const DAY_NAME_MAP = {
     sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6,
     sun:0,mon:1,tue:2,wed:3,thu:4,fri:5,sat:6,
@@ -52,86 +95,51 @@ export default function Overview() {
   const workoutMap = {}; workouts?.forEach(w => { workoutMap[w.date] = w })
   const nutritionMap = {}; nutrition?.forEach(n => { nutritionMap[n.date] = n })
 
-  // Check today + last 3 days for workout issues.
-  // Three distinct cases:
-  //   1. Today has a planned session but nothing logged yet (nudge, not alarm)
-  //   2. A past planned session has no log AND no rest/missed row (genuinely skipped)
-  //   3. A past planned session is explicitly logged as 'missed'
-  // Rest days (no plan session, or session_type='rest') are never flagged.
-  const unloggedWorkoutDays  = []  // planned, past, no row at all
-  let todayPlannedNotLogged  = false
+  const unloggedWorkoutDays = []
+  let todayPlannedNotLogged = false
 
   for (let i = 0; i <= 3; i++) {
-  const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD')
-  const w = workoutMap[d]
-  const session = (w?.session_type || '').toLowerCase()
-  const planned = isPlannedDay(d)
-
-  if (i === 0) {
-    if (planned && !w) {
-      todayPlannedNotLogged = true
-    }
-  } else {
-    if (!planned) continue
-    if (session === 'rest') continue
-
-    // missed workouts count as logged
-    if (!w) {
-      unloggedWorkoutDays.push(d)
+    const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD')
+    const w = workoutMap[d]
+    const session = (w?.session_type || '').toLowerCase()
+    const planned = isPlannedDay(d)
+    if (i === 0) {
+      if (planned && !w) todayPlannedNotLogged = true
+    } else {
+      if (!planned) continue
+      if (session === 'rest') continue
+      if (!w) unloggedWorkoutDays.push(d)
     }
   }
-}
 
-const showWorkoutAlert =
-  todayPlannedNotLogged ||
-  unloggedWorkoutDays.length > 0
+  const showWorkoutAlert = todayPlannedNotLogged || unloggedWorkoutDays.length > 0
+  const alertWorkoutMsg = (() => {
+    if (!showWorkoutAlert) return ''
+    const parts = []
+    if (todayPlannedNotLogged) parts.push("Today's session hasn't been logged yet")
+    if (unloggedWorkoutDays.length) parts.push(`${unloggedWorkoutDays.length} recent planned session${unloggedWorkoutDays.length > 1 ? 's' : ''} with no entry`)
+    return parts.join(' · ')
+  })()
 
-const alertWorkoutMsg = (() => {
-  if (!showWorkoutAlert) return ''
-
-  const parts = []
-
-  if (todayPlannedNotLogged) {
-    parts.push("Today's session hasn't been logged yet")
-  }
-
-  if (unloggedWorkoutDays.length) {
-    parts.push(
-      `${unloggedWorkoutDays.length} past planned session${unloggedWorkoutDays.length > 1 ? 's' : ''} with no entry`
-    )
-  }
-
-  return parts.join(' · ') + '.'
-})()
-
-  // Check today + last 3 days for unlogged nutrition.
-  // '__MISSED__' (off-plan/cheat day) is deliberate — not flagged.
-  // Rest days are still flagged if nutrition wasn't logged (nutrition is expected every day).
-  const unloggedNutritionDays  = []
-  let todayNutritionNotLogged  = false
-
+  const unloggedNutritionDays = []
+  let todayNutritionNotLogged = false
   for (let i = 0; i <= 3; i++) {
     const d = dayjs().subtract(i, 'day').format('YYYY-MM-DD')
     const n = nutritionMap[d]
     const hasEntry = n?.calories || n?.notes === '__MISSED__'
-    if (i === 0) {
-      if (!hasEntry) todayNutritionNotLogged = true
-    } else {
-      if (!hasEntry) unloggedNutritionDays.push(d)
-    }
+    if (i === 0) { if (!hasEntry) todayNutritionNotLogged = true }
+    else { if (!hasEntry) unloggedNutritionDays.push(d) }
   }
-
   const showNutritionAlert = todayNutritionNotLogged || unloggedNutritionDays.length > 0
-
   const alertNutritionMsg = (() => {
     if (!showNutritionAlert) return ''
     const parts = []
-    if (todayNutritionNotLogged)        parts.push("Today's nutrition hasn't been logged yet")
-    if (unloggedNutritionDays.length)   parts.push(`${unloggedNutritionDays.length} day${unloggedNutritionDays.length > 1 ? 's' : ''} without a nutrition entry recently`)
-    return parts.join(' · ') + '.'
+    if (todayNutritionNotLogged) parts.push("Today's nutrition hasn't been logged")
+    if (unloggedNutritionDays.length) parts.push(`${unloggedNutritionDays.length} day${unloggedNutritionDays.length > 1 ? 's' : ''} without a nutrition entry recently`)
+    return parts.join(' · ')
   })()
 
-  // ── Weekly grid ────────────────────────────────────────────────
+  // ── Weekly grid ─────────────────────────────────────────────────
   const last14 = Array.from({ length: 14 }, (_, i) =>
     dayjs().subtract(13 - i, 'day').format('YYYY-MM-DD')
   )
@@ -147,158 +155,267 @@ const alertWorkoutMsg = (() => {
     const isMissed  = session === 'missed'
     const isRest    = session === 'rest' || (!w && plan && !planned && !isFuture)
     const isDone    = w && !isMissed && !isRest
+    const nutEntry  = nutritionMap[date]
+    const nutOk     = nutEntry?.calories > 0
 
     const label = w
-      ? (isMissed ? 'MISS' : isRest ? 'REST' : session.toUpperCase().slice(0, 4))
-      : isToday ? dayjs(date).format('ddd').toUpperCase()
-      : dayjs(date).format('dd').toUpperCase()
+      ? (isMissed ? 'Miss' : isRest ? 'Rest' : session.charAt(0).toUpperCase() + session.slice(1, 4))
+      : isToday ? dayjs(date).format('ddd')
+      : dayjs(date).format('dd')
 
-    let cls = styles.cell  // default: upcoming / no plan
-    if (isDone)              cls = styles.cellDone
-    else if (isMissed)       cls = styles.cellMissed
-    else if (isRest)         cls = styles.cellRest
-    else if (isToday)        cls = styles.cellToday
-    else if (planned && !isFuture) cls = styles.cellMissed  // past planned day never logged
+    let cls = styles.cell
+    if (isDone)   cls = styles.cellDone
+    else if (isMissed) cls = styles.cellMissed
+    else if (isRest)   cls = styles.cellRest
+    else if (isToday)  cls = styles.cellToday
+    else if (planned && !isFuture) cls = styles.cellMissed
 
-    return <div className={cls} title={date}>{label}</div>
+    return (
+      <div className={cls} title={date}>
+        <span className={styles.cellLabel}>{label}</span>
+        {!isFuture && !isRest && (
+          <span className={`${styles.nutDot} ${nutOk ? styles.nutDotOk : styles.nutDotMiss}`} />
+        )}
+      </div>
+    )
   }
 
-  // recent activity feed
+  // ── Activity feed ────────────────────────────────────────────────
   const feed = [
     ...(workouts?.slice(0, 6).map(w => ({
       date: w.date, type: 'workout',
-      msg: `${w.session_type ?? 'session'} · ${w.duration_min ? w.duration_min + ' min' : ''} · effort ${w.perceived_effort ?? '—'}/10`,
+      msg: `${w.session_type ?? 'Session'}${w.duration_min ? ' · ' + w.duration_min + ' min' : ''}${w.perceived_effort ? ' · effort ' + w.perceived_effort + '/10' : ''}`,
     })) ?? []),
     ...(nutrition?.slice(0, 6).filter(n => n.calories).map(n => ({
       date: n.date, type: 'nutrition',
-      msg: `${n.calories} kcal · ${n.protein_g ?? '—'}g protein · ${n.carbs_g ?? '—'}g carbs`,
+      msg: `${n.calories} kcal · ${n.protein_g ?? '—'}g protein`,
     })) ?? []),
-  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7)
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8)
 
-  const badgeType = { workout: 'positive', nutrition: 'info', metrics: 'warning' }
+  const badgeType = { workout: 'positive', nutrition: 'info' }
 
   return (
     <div>
-      {/* HERO */}
-      <div className={styles.hero}>
-        <div className={styles.eyebrow}>ATHLETE.profile · {today}</div>
-        <div className={styles.name}>{profile?.name ?? 'Athlete'}</div>
-        <div className={styles.sub}>{profile?.goal_type ?? '—'} · {profile?.activity_level ?? '—'}</div>
-        <div className={styles.statGrid}>
-          <StatCard label="current weight"  value={currentWeight ?? '—'} unit="kg"  sub="from body metrics" />
-          <StatCard label="streak"          value={streak}               unit=" days" sub="on plan" subType="positive" />
-          <StatCard label="sessions / 30d"  value={workouts?.filter(w => !['missed','rest'].includes(w.session_type)).length ?? 0} sub="logged workouts" />
-          <StatCard label="avg protein"     value={avgProtein ?? '—'}    unit="g"
-            sub={avgProtein ? 'per logged day' : 'log nutrition'}
-            subType={avgProtein ? 'positive' : 'warning'} />
-        </div>
 
-        {/* ── ALERT BANNERS — below stat grid, above chat ── */}
-        {(showWorkoutAlert || showNutritionAlert) && (
-          <div className={styles.alertGroup}>
-            {showWorkoutAlert && (
-              <div className={styles.alert} data-type="workout">
-                <div className={styles.alertLeft}>
-                  <span className={styles.alertIcon}>⚠</span>
-                  <div>
-                    <div className={styles.alertTitle}>WORKOUT_LOG.incomplete</div>
-                    <div className={styles.alertMsg}>{alertWorkoutMsg}</div>
-                  </div>
+      {/* ── ALERTS — always first, below nav ── */}
+      {(showWorkoutAlert || showNutritionAlert) && (
+        <div className={styles.alertGroup}>
+          {showWorkoutAlert && (
+            <div className={styles.alert} data-type="workout">
+              <div className={styles.alertLeft}>
+                <span className={styles.alertIcon}>⚠</span>
+                <div>
+                  <div className={styles.alertTitle}>Incomplete workout log</div>
+                  <div className={styles.alertMsg}>{alertWorkoutMsg}</div>
                 </div>
-                <button className={styles.alertBtn} onClick={() => navigate('/schedule')}>
-                  GO TO SCHEDULE →
-                </button>
               </div>
-            )}
-            {showNutritionAlert && (
-              <div className={styles.alert} data-type="nutrition">
-                <div className={styles.alertLeft}>
-                  <span className={styles.alertIcon}>⚠</span>
-                  <div>
-                    <div className={styles.alertTitle}>NUTRITION_LOG.incomplete</div>
-                    <div className={styles.alertMsg}>{alertNutritionMsg}</div>
-                  </div>
+              <button className="btn-ghost" style={{fontSize:11}} onClick={() => navigate('/schedule')}>
+                Go to Schedule →
+              </button>
+            </div>
+          )}
+          {showNutritionAlert && (
+            <div className={styles.alert} data-type="nutrition">
+              <div className={styles.alertLeft}>
+                <span className={styles.alertIcon}>⚠</span>
+                <div>
+                  <div className={styles.alertTitle}>Nutrition not logged</div>
+                  <div className={styles.alertMsg}>{alertNutritionMsg}</div>
                 </div>
-                <button className={styles.alertBtn} onClick={() => navigate('/nutrition')}>
-                  GO TO NUTRITION →
-                </button>
               </div>
+              <button className="btn-ghost" style={{fontSize:11}} onClick={() => navigate('/nutrition')}>
+                Go to Nutrition →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TODAY HEADER ── */}
+      <div className={styles.todayHeader}>
+        <div className={styles.todayMeta}>
+          <span className={styles.todayDate}>{dayjs().format('dddd, MMMM D')}</span>
+          {hasTodaySession && (
+            <span className={styles.todaySession}>
+              <span className={styles.sessionPill}>{sessionLabel} day</span>
+              {todayExercises.length > 0 && (
+                <span className={styles.exercisePreview}>
+                  {todayExercises.map(e => e.exercise).join(' · ')}
+                  {(todayPlan?.exercises?.length ?? 0) > 3 ? ` +${(todayPlan.exercises.length - 3)} more` : ''}
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+        {hasTodaySession && !todayLogged && (
+          <button className="btn-primary" onClick={() => navigate('/workouts')}>
+            Log today's session →
+          </button>
+        )}
+        {todayLogged && (
+          <span className={styles.todayDone}>✓ Session logged</span>
+        )}
+      </div>
+
+      {/* ── STAT CARDS ── */}
+      <div className={styles.statGrid}>
+        <StatCard
+          label="Current weight"
+          value={currentWeight ?? '—'}
+          unit="kg"
+          icon="⚖"
+          sub={currentWeight ? 'Latest measurement' : 'No measurement logged'}
+          subType={currentWeight ? 'neutral' : 'warning'}
+        />
+        <StatCard
+          label="Streak"
+          value={streak}
+          unit=" days"
+          icon="🔥"
+          sub="on plan"
+          subType={streak > 0 ? 'positive' : 'neutral'}
+        />
+        <StatCard
+          label="Sessions this week"
+          value={sessionsThisWeek}
+          icon="🏋"
+          sub={sessionDelta !== 0 ? `${sessionDelta > 0 ? '+' : ''}${sessionDelta} vs last week` : 'Same as last week'}
+          subType={sessionDelta > 0 ? 'positive' : sessionDelta < 0 ? 'warning' : 'neutral'}
+          delta={sessionDelta !== 0 ? `${sessionDelta > 0 ? '↑' : '↓'} ${Math.abs(sessionDelta)} vs last week` : undefined}
+          deltaType={sessionDelta > 0 ? 'up' : sessionDelta < 0 ? 'down' : 'neutral'}
+        />
+        <StatCard
+          label="Avg protein"
+          value={avgProtein ?? '—'}
+          unit="g"
+          icon="🥩"
+          sub={avgProtein ? 'per logged day' : 'Log nutrition to track'}
+          subType={avgProtein ? 'positive' : 'warning'}
+          delta={proteinDelta != null ? `${proteinDelta > 0 ? '↑ +' : '↓ '}${Math.abs(proteinDelta)}g vs last week` : undefined}
+          deltaType={proteinDelta > 0 ? 'up' : proteinDelta < 0 ? 'down' : 'neutral'}
+        />
+      </div>
+
+      {/* ── TODAY'S NUTRITION SNAPSHOT ── */}
+      <div className={styles.nutritionBar}>
+        <div className={styles.nutritionBarLabel}>
+          <span className={styles.nutritionBarTitle}>Today's nutrition</span>
+          {nutStatus && (
+            <span className={`${styles.nutBadge} ${styles[`nutBadge_${nutStatus}`]}`}>
+              {nutStatus === 'hit' ? 'On target' : nutStatus === 'partial' ? 'Partial' : nutStatus === 'off' ? 'Off plan' : 'Missed'}
+            </span>
+          )}
+        </div>
+        {todayNut?.calories ? (
+          <div className={styles.nutritionMacros}>
+            <MacroMini label="Calories" value={calLogged} target={calTarget} unit="kcal" pct={calPct} />
+            <MacroMini label="Protein"  value={protLogged} target={protTarget} unit="g" pct={protPct} />
+            {todayNut.carbs_g != null && (
+              <MacroMini label="Carbs" value={todayNut.carbs_g}
+                target={targets?.carbs_g} unit="g"
+                pct={targets?.carbs_g ? Math.min(100, Math.round(todayNut.carbs_g / targets.carbs_g * 100)) : null} />
             )}
+            {todayNut.fat_g != null && (
+              <MacroMini label="Fat" value={todayNut.fat_g}
+                target={targets?.fat_g} unit="g"
+                pct={targets?.fat_g ? Math.min(100, Math.round(todayNut.fat_g / targets.fat_g * 100)) : null} />
+            )}
+          </div>
+        ) : (
+          <div className={styles.nutritionEmpty}>
+            No nutrition logged today
+            <button className="btn-ghost" style={{marginLeft:12,fontSize:11}} onClick={() => navigate('/nutrition')}>
+              Log now
+            </button>
           </div>
         )}
       </div>
 
-      <SectionDivider label="CHAT.fahim" />
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+      {/* ── CHAT ── */}
+      <SectionDivider label="Ask Fahim" />
+      <div className={styles.chatWrap}>
         <ChatPanel />
       </div>
 
-      <SectionDivider label="WEEKLY_OVERVIEW.log" />
+      {/* ── WEEKLY OVERVIEW ── */}
+      <SectionDivider label="Weekly overview" />
       <div className={styles.grid2}>
-        <Panel label="WORKOUT_VOLUME.30d">
-          <VolumeChart workouts={workouts ?? []} />
+        <Panel label="Training volume · 30 days" noPad>
+          <div style={{padding: '12px 16px 8px'}}>
+            <VolumeChart workouts={workouts ?? []} />
+          </div>
         </Panel>
-        <Panel label="TRAINING_WEEK.grid">
+        <Panel label="Training grid · 2 weeks">
           <div className={styles.weekSection}>
-            <span className={styles.weekLabel}>prev week</span>
+            <span className={styles.weekLabel}>Previous week</span>
             <div className={styles.weekRow}>{week1.map(d => <WorkoutCell key={d} date={d} />)}</div>
           </div>
           <div className={styles.weekSection}>
-            <span className={styles.weekLabel}>this week</span>
+            <span className={styles.weekLabel}>This week</span>
             <div className={styles.weekRow}>{week2.map(d => <WorkoutCell key={d} date={d} />)}</div>
           </div>
           <div className={styles.weekLegend}>
-            <span className={styles.lgDone}>■ trained</span>
-            <span className={styles.lgMissed}>■ missed</span>
-            <span className={styles.lgRest}>■ rest</span>
-            <span className={styles.lgToday}>■ today</span>
-            <span className={styles.lgEmpty}>□ upcoming</span>
+            <span className={styles.lgDone}>● Trained</span>
+            <span className={styles.lgMissed}>● Missed</span>
+            <span className={styles.lgRest}>● Rest</span>
+            <span className={styles.lgToday}>● Today</span>
+            <span className={styles.lgEmpty}>○ Upcoming</span>
+          </div>
+          <div className={styles.nutLegend}>
+            <span className={styles.nutLegendDot + ' ' + styles.nutDotOk}>●</span>
+            <span style={{color:'var(--faint)',fontSize:9}}>Nutrition logged</span>
+            <span className={styles.nutLegendDot + ' ' + styles.nutDotMiss} style={{marginLeft:8}}>●</span>
+            <span style={{color:'var(--faint)',fontSize:9}}>Not logged</span>
           </div>
         </Panel>
       </div>
 
-      <SectionDivider label="GOALS.active" />
+      {/* ── GOALS + ACTIVITY FEED ── */}
+      <SectionDivider label="Goals & recent activity" />
       <div className={styles.grid2}>
-        <Panel label="GOAL_PROGRESS.tracker">
-          {goals?.length
-            ? goals.map(g => <GoalRow key={g.id} goal={g} />)
-            : <span style={{ fontFamily:'var(--mono)', fontSize:10, color:'var(--faint)' }}>NO_GOALS · add goals on the Goals page</span>
+        <Panel label="Active goals" action="View all" onAction={() => navigate('/goals')}>
+          {goals?.filter(g => g.status === 'active' || !g.status)?.length
+            ? goals.filter(g => g.status === 'active' || !g.status).map(g => <GoalRow key={g.id} goal={g} />)
+            : <span className={styles.emptyNote}>No active goals — add one on the Goals page</span>
           }
         </Panel>
-        <Panel label="ACTIVITY_FEED.recent">
+        <Panel label="Recent activity" action="View all" onAction={() => navigate('/workouts')}>
           {feed.length ? feed.map((f, i) => (
             <div key={i} className={styles.feedRow}>
               <span className={styles.feedDate}>{dayjs(f.date).format('MMM D')}</span>
               <div>
-                <Badge type={badgeType[f.type]}>{f.type.toUpperCase()}</Badge>
+                <Badge type={badgeType[f.type]}>{f.type === 'workout' ? 'Workout' : 'Nutrition'}</Badge>
                 <span className={styles.feedMsg}>{f.msg}</span>
               </div>
             </div>
-          )) : <span style={{ fontFamily:'var(--mono)', fontSize:10, color:'var(--faint)' }}>NO_ACTIVITY · start logging</span>}
+          )) : <span className={styles.emptyNote}>No activity yet — start logging</span>}
         </Panel>
       </div>
 
-      {todayNut?.calories && (
-        <>
-          <SectionDivider label="TODAY.nutrition_snapshot" />
-          <div className={styles.todayPanel}>
-            <Panel label="MACRO_SUMMARY.today">
-              <div className={styles.todayGrid}>
-                {[
-                  { label:'Calories', value:todayNut.calories,  unit:'kcal' },
-                  { label:'Protein',  value:todayNut.protein_g, unit:'g' },
-                  { label:'Carbs',    value:todayNut.carbs_g,   unit:'g' },
-                  { label:'Fat',      value:todayNut.fat_g,     unit:'g' },
-                ].map(m => (
-                  <div key={m.label} className={styles.macroItem}>
-                    <span className={styles.macroLabel}>{m.label}</span>
-                    <span className={styles.macroVal}>{m.value ?? '—'}<span className={styles.macroUnit}>{m.unit}</span></span>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          </div>
-        </>
+    </div>
+  )
+}
+
+function MacroMini({ label, value, target, unit, pct }) {
+  return (
+    <div className={styles.macroMini}>
+      <div className={styles.macroMiniHead}>
+        <span className={styles.macroMiniLabel}>{label}</span>
+        <span className={styles.macroMiniVal}>
+          {value ?? 0}{unit}
+          {target && <span className={styles.macroMiniTarget}> / {target}{unit}</span>}
+        </span>
+      </div>
+      {pct != null && (
+        <div className={styles.macroTrack}>
+          <div
+            className={styles.macroFill}
+            style={{
+              width: `${pct}%`,
+              background: pct >= 95 ? 'var(--accent)' : pct >= 70 ? 'var(--blue)' : 'var(--warn)'
+            }}
+          />
+        </div>
       )}
     </div>
   )
