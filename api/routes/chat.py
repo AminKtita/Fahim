@@ -73,6 +73,7 @@ def handle_log_data(log_json: dict) -> dict:
                     rpe=s.get("rpe"),
                     is_warmup=s.get("is_warmup", False),
                     notes=s.get("notes"),
+                    exercise_id=s.get("exercise_id"),
                 )
             return {"category": "workout", "date": log_json["date"]}
 
@@ -121,9 +122,8 @@ def handle_log_data(log_json: dict) -> dict:
             return {"category": "goal", "action": "created", "title": log_json.get("title")}
 
         elif log_type == "plan":
-            # Plan creation isn't part of memory_manager's current surface;
-            # acknowledge but don't fail the whole chat turn.
-            return {"category": "plan", "note": "plan logging not yet wired to DB"}
+            plan_id = mm.save_full_plan(log_json)
+            return {"category": "plan", "action": "created", "plan_id": plan_id, "name": log_json.get("name")}
 
         else:
             return {"category": "unknown", "raw_type": log_type}

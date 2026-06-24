@@ -53,7 +53,8 @@ def create_goal(data: GoalIn):
 
 @router.patch("/{goal_id}")
 def update_goal(goal_id: int, data: GoalUpdateIn):
-    with get_conn() as conn:
+    conn = get_conn()
+    try:
         # build dynamic update from only provided fields
         fields, values = [], []
         if data.current_value is not None:
@@ -72,13 +73,20 @@ def update_goal(goal_id: int, data: GoalUpdateIn):
             raise HTTPException(status_code=400, detail="No fields to update")
         values.append(goal_id)
         conn.execute(f"UPDATE goals SET {', '.join(fields)} WHERE id = ?", values)
+        conn.commit()
+    finally:
+        conn.close()
     snapshot_writer.update_all()
     return {"status": "updated"}
 
 
 @router.delete("/{goal_id}")
 def delete_goal(goal_id: int):
-    with get_conn() as conn:
+    conn = get_conn()
+    try:
         conn.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
+        conn.commit()
+    finally:
+        conn.close()
     snapshot_writer.update_all()
     return {"status": "deleted"}

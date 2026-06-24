@@ -4,6 +4,7 @@ import { getWorkouts, getNutrition, getSummaries, getPlan } from '../lib/api'
 import { useStatus } from '../lib/StatusContext'
 import { useWorkoutModals, getPlanDayForDate } from '../lib/WorkoutModals'
 import { useNutritionModals, deriveNutStatus } from '../lib/NutritionModals'
+import { groupSetsByExercise } from '../lib/exerciseGrouping'
 import dayjs from 'dayjs'
 import styles from './Schedule.module.css'
 
@@ -374,17 +375,11 @@ export default function Schedule() {
                       </div>
                       {selWorkout.sets?.filter(s => !s.is_warmup).length > 0 && (
                         <div className={styles.setsPreview}>
-                          {Object.entries(
-                            selWorkout.sets.filter(s => !s.is_warmup).reduce((acc, s) => {
-                              if (!acc[s.exercise]) acc[s.exercise] = []
-                              acc[s.exercise].push(s)
-                              return acc
-                            }, {})
-                          ).slice(0, 5).map(([ex, sets]) => {
+                          {groupSetsByExercise(selWorkout.sets.filter(s => !s.is_warmup)).slice(0, 5).map(({ key, name, sets }) => {
                             const top = sets.reduce((b, s) => (s.weight_kg ?? 0) > (b.weight_kg ?? 0) ? s : b, sets[0])
                             return (
-                              <div key={ex} className={styles.setPreviewRow}>
-                                <span className={styles.setEx}>{ex}</span>
+                              <div key={key} className={styles.setPreviewRow}>
+                                <span className={styles.setEx}>{name}</span>
                                 <span className={styles.setVal}>
                                   {sets.length} × {top.reps ?? '—'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}
                                 </span>
@@ -426,11 +421,17 @@ export default function Schedule() {
                       </>
                     )}
                     {canLogN && (
+                      <>
+                      <button className={styles.detailBtn}
+                        onClick={nutritionModals.openMeals}>
+                        From recipe
+                      </button>
                       <button className={`${styles.detailBtn} ${styles.detailBtnPrimary}`}
                         onClick={nutritionModals.openLog}>
                         + Log
                       </button>
-                    )}
+                    </>
+                  )}
                   </div>
                 </div>
 

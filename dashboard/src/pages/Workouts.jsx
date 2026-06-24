@@ -3,6 +3,8 @@ import { useApi } from '../hooks/useApi'
 import { getWorkouts, getPlan } from '../lib/api'
 import { useStatus } from '../lib/StatusContext'
 import { useWorkoutModals, getPlanDayForDate } from '../lib/WorkoutModals'
+import { exerciseKey, groupSetsByExercise } from '../lib/exerciseGrouping'
+import ExerciseLibraryTab from '../lib/ExerciseLibraryTab'
 import Panel from '../components/ui/Panel'
 import SectionDivider from '../components/ui/SectionDivider'
 import Badge from '../components/ui/Badge'
@@ -18,6 +20,7 @@ export default function Workouts() {
   const [selDate,    setSelDate]    = useState(null)
   const [selectedExercise, setSelectedExercise] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [activeTab,  setActiveTab]  = useState('log') // 'log' | 'library'
 
   const today = dayjs().format('YYYY-MM-DD')
   const todayWorkout = workouts?.find(w => w.date === today)
@@ -28,15 +31,15 @@ export default function Workouts() {
   const historyModals = useWorkoutModals({ plan, selDate, selWorkout, onSaved })
   const todayModals   = useWorkoutModals({ plan, selDate: today, selWorkout: todayWorkout, onSaved })
 
-  const exercises = [...new Set(
-    workouts?.flatMap(w => w.sets?.map(s => s.exercise) ?? []).filter(Boolean) ?? []
-  )].sort()
+  const allSets = workouts?.flatMap(w => w.sets ?? []) ?? []
+  const exerciseGroups = groupSetsByExercise(allSets)
+  const exercises = exerciseGroups.map(g => ({ key: g.key, name: g.name })).sort((a,b)=>a.name.localeCompare(b.name))
 
   const effortColor = e => !e ? 'neutral' : e >= 8 ? 'warning' : e >= 6 ? 'info' : 'positive'
   const isRestOrMissed = w => w?.session_type === 'rest' || w?.session_type === 'missed'
 
-  const openExercise = (ex) => {
-    setSelectedExercise(ex)
+  const openExercise = (key) => {
+    setSelectedExercise(key)
     setDrawerOpen(true)
   }
 
@@ -52,7 +55,7 @@ export default function Workouts() {
             <div className={styles.drawerHeader}>
               <span className={styles.drawerTitle}>
                 {selectedExercise
-                  ? selectedExercise.charAt(0).toUpperCase() + selectedExercise.slice(1)
+                  ? (exercises.find(e => e.key === selectedExercise)?.name ?? '')
                   : 'Exercise history'}
               </span>
               <button className={styles.drawerClose} onClick={() => setDrawerOpen(false)}>✕</button>
@@ -62,11 +65,11 @@ export default function Workouts() {
             <div className={styles.drawerPicker}>
               {exercises.map(ex => (
                 <button
-                  key={ex}
-                  className={`${styles.exChip} ${selectedExercise === ex ? styles.exChipActive : ''}`}
-                  onClick={() => setSelectedExercise(ex)}
+                  key={ex.key}
+                  className={`${styles.exChip} ${selectedExercise === ex.key ? styles.exChipActive : ''}`}
+                  onClick={() => setSelectedExercise(ex.key)}
                 >
-                  {ex}
+                  {ex.name}
                 </button>
               ))}
             </div>
@@ -75,9 +78,9 @@ export default function Workouts() {
             {selectedExercise && (
               <div className={styles.drawerHistory}>
                 {workouts
-                  ?.filter(w => w.sets?.some(s => s.exercise === selectedExercise))
+                  ?.filter(w => w.sets?.some(s => exerciseKey(s) === selectedExercise))
                   .map(w => {
-                    const sets = w.sets.filter(s => s.exercise === selectedExercise && !s.is_warmup)
+                    const sets = w.sets.filter(s => exerciseKey(s) === selectedExercise && !s.is_warmup)
                     if (!sets.length) return null
                     const top = sets.reduce((b, s) => (s.weight_kg ?? 0) > (b.weight_kg ?? 0) ? s : b, sets[0])
                     return (
@@ -109,15 +112,37 @@ export default function Workouts() {
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.pageTitle}>Workouts</div>
-          <div className={styles.pageSub}>Session log and exercise history.</div>
+          <div className={styles.pageSub}>
+            {activeTab === 'log' ? 'Session log and exercise history.' : 'Your exercise library — view, add, edit, or remove exercises.'}
+          </div>
         </div>
-        {exercises.length > 0 && (
-          <button className="btn-ghost" onClick={() => { setSelectedExercise(exercises[0]); setDrawerOpen(true) }}>
+        {activeTab === 'log' && exercises.length > 0 && (
+          <button className="btn-ghost" onClick={() => { setSelectedExercise(exercises[0].key); setDrawerOpen(true) }}>
             Exercise history →
           </button>
         )}
       </div>
 
+      {/* TAB SWITCHER */}
+      <div className={styles.tabBar}>
+        <button
+          className={`${styles.tabBtn} ${activeTab === 'log' ? styles.tabBtnActive : ''}`}
+          onClick={() => setActiveTab('log')}
+        >
+          Session log
+        </button>
+        <button
+          className={`${styles.tabBtn} ${activeTab === 'library' ? styles.tabBtnActive : ''}`}
+          onClick={() => setActiveTab('library')}
+        >
+          Exercise library
+        </button>
+      </div>
+
+      {activeTab === 'library' && <ExerciseLibraryTab />}
+
+      {activeTab === 'log' && (
+      <>
       {/* TODAY PANEL */}
       <SectionDivider label="Today's session" />
       <div className={styles.todayWrap}>
@@ -142,21 +167,15 @@ export default function Workouts() {
                 </div>
                 {todayWorkout.sets?.filter(s => !s.is_warmup).length > 0 && (
                   <div className={styles.todaySets}>
-                    {Object.entries(
-                      todayWorkout.sets.filter(s => !s.is_warmup).reduce((acc, s) => {
-                        if (!acc[s.exercise]) acc[s.exercise] = []
-                        acc[s.exercise].push(s)
-                        return acc
-                      }, {})
-                    ).map(([ex, sets]) => {
+                    {groupSetsByExercise(todayWorkout.sets.filter(s => !s.is_warmup)).map(({ key, name, sets }) => {
                       const top = sets.reduce((b, s) => (s.weight_kg ?? 0) > (b.weight_kg ?? 0) ? s : b, sets[0])
                       return (
-                        <div key={ex} className={styles.todaySetRow}>
+                        <div key={key} className={styles.todaySetRow}>
                           <span
                             className={styles.todaySetEx}
-                            onClick={() => openExercise(ex)}
+                            onClick={() => openExercise(key)}
                             title="View exercise history"
-                          >{ex}</span>
+                          >{name}</span>
                           <span className={styles.todaySetVal}>
                             {sets.length} × {top.reps ?? '?'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}
                           </span>
@@ -185,7 +204,7 @@ export default function Workouts() {
                     <span className={styles.planBadge}>{(todayPlan.session_type ?? 'Training').toUpperCase()} DAY</span>
                     {todayPlan.exercises?.length > 0 && (
                       <span className={styles.planExercises}>
-                        {todayPlan.exercises.slice(0, 3).map(e => e.exercise).join(' · ')}
+                        {todayPlan.exercises.slice(0, 3).map(e => e.exercise_name ?? e.exercise).join(' · ')}
                         {todayPlan.exercises.length > 3 ? ` +${todayPlan.exercises.length - 3} more` : ''}
                       </span>
                     )}
@@ -253,21 +272,15 @@ export default function Workouts() {
                 </div>
                 {!isRestOrMissed(w) && w.sets?.filter(s => !s.is_warmup).length > 0 && (
                   <div className={styles.setsList}>
-                    {Object.entries(
-                      w.sets.filter(s => !s.is_warmup).reduce((acc, s) => {
-                        if (!acc[s.exercise]) acc[s.exercise] = []
-                        acc[s.exercise].push(s)
-                        return acc
-                      }, {})
-                    ).map(([ex, sets]) => {
+                    {groupSetsByExercise(w.sets.filter(s => !s.is_warmup)).map(({ key, name, sets }) => {
                       const top = sets.reduce((b, s) => (s.weight_kg ?? 0) > (b.weight_kg ?? 0) ? s : b, sets[0])
                       return (
-                        <div key={ex} className={styles.exRow}>
+                        <div key={key} className={styles.exRow}>
                           <span
                             className={styles.exName}
-                            onClick={() => openExercise(ex)}
+                            onClick={() => openExercise(key)}
                             title="View exercise history"
-                          >{ex}</span>
+                          >{name}</span>
                           <span className={styles.exDetail}>
                             {sets.length} × {top.reps ?? '?'}{top.weight_kg ? ` @ ${top.weight_kg}kg` : ' BW'}{top.rpe ? ` · RPE ${top.rpe}` : ''}
                           </span>
@@ -282,6 +295,8 @@ export default function Workouts() {
           }
         </Panel>
       </div>
+      </>
+      )}
 
       {historyModals.Modals()}
       {todayModals.Modals()}

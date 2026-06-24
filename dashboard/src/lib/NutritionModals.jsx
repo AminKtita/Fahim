@@ -3,7 +3,7 @@
  * Used by both Schedule and Nutrition pages.
  */
 import { useState } from 'react'
-import { logNutrition, updateNutrition, deleteNutrition } from './api'
+import { logNutrition, updateNutrition, deleteNutrition, getRecipes, logMeal, getMeals, deleteMeal as deleteMealApi } from './api'
 import styles from './WorkoutModals.module.css'
 import nutStyles from './NutritionModals.module.css'
 import dayjs from 'dayjs'
@@ -50,12 +50,62 @@ const STATUS_CFG = {
 
 export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
   const [modal,   setModal]   = useState(null) // null | 'log' | 'detail'
-  const [nMode,   setNMode]   = useState('log')
+  const [nMode,   setNMode]   = useState('log') // 'log' | 'missed' | 'meals'
   const [form,    setForm]    = useState({})
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState(null)
   const [editMode,setEditMode]= useState(false)
   const [confirmDel,setConfirmDel] = useState(false)
+
+  // ── Meal-composer sub-state ──
+  const [recipes,           setRecipes]           = useState(null)
+  const [recipeSearch,      setRecipeSearch]       = useState('')
+  const [recipeCategory,    setRecipeCategory]     = useState('All')
+  const [dayMeals,          setDayMeals]           = useState([])
+  const [mealsListCollapsed,setMealsListCollapsed] = useState(false)  // shrink/expand the logged meals list
+  const [recipesCollapsed,  setRecipesCollapsed]   = useState(false)  // shrink/expand the recipe picker list
+  const [pickedRecipe,      setPickedRecipe]       = useState(null)
+  const [pickedRows,        setPickedRows]         = useState([])
+  const [mealsLoading,      setMealsLoading]       = useState(false)
+  const [mealsSaving,       setMealsSaving]        = useState(false)
+  const [mealsError,        setMealsError]         = useState(null)
+
+  const loadDayMeals = async (date) => {
+    if (!date) return
+    setMealsLoading(true)
+    try { setDayMeals(await getMeals(date)) }
+    catch (e) { setMealsError(e.message) }
+    finally { setMealsLoading(false) }
+  }
+
+  const [recipesFailed, setRecipesFailed] = useState(false)
+
+  const ensureRecipesLoaded = async () => {
+    console.log('[NutritionModals] ensureRecipesLoaded called. recipes=', recipes, 'recipesFailed=', recipesFailed)
+    // Only short-circuit if we already have a *successful* load. A prior
+    // failure must NOT permanently block retries — without recipesFailed
+    // as a separate flag, setting `recipes` to [] to clear the infinite
+    // "Loading recipes…" spinner on error would make `if (recipes) return`
+    // treat that failure as if it had succeeded forever, since [] is
+    // truthy in JS. That left the picker silently empty on every future
+    // open with no way to recover short of a full page reload.
+    if (recipes && !recipesFailed) {
+      console.log('[NutritionModals] skipping fetch — already loaded successfully')
+      return
+    }
+    setRecipesFailed(false)
+    console.log('[NutritionModals] calling getRecipes()...')
+    try {
+      const result = await getRecipes()
+      console.log('[NutritionModals] getRecipes() returned', result?.length, 'recipes')
+      setRecipes(result)
+    } catch (e) {
+      console.error('[NutritionModals] getRecipes() FAILED:', e)
+      setRecipes([])
+      setRecipesFailed(true)
+      setMealsError(`Couldn't load recipes: ${e.response?.data?.detail || e.message}`)
+    }
+  }
 
   const targets = plan?.nutrition_targets ?? {}
 
@@ -63,8 +113,127 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
     setEditMode(false); setNMode('log')
     setForm({ calories:'', protein_g:'', carbs_g:'', fat_g:'', water_l:'', notes:'' })
     setError(null); setConfirmDel(false)
+    setPickedRecipe(null); setPickedRows([]); setMealsError(null)
+    loadDayMeals(selDate)
     setModal('log')
   }
+
+  const openMeals = () => {
+    console.log('[NutritionModals] openMeals called. selDate=', selDate)
+    setEditMode(false); setNMode('meals')
+    setForm({ calories:'', protein_g:'', carbs_g:'', fat_g:'', water_l:'', notes:'' })
+    setError(null); setConfirmDel(false)
+    setPickedRecipe(null); setPickedRows([]); setMealsError(null)
+    setRecipeSearch(''); setRecipeCategory('All'); setMealsListCollapsed(false); setRecipesCollapsed(false)
+    setModal('log')
+    // Sequential, not concurrent: avoids two SQLite connections opening
+    // within the same instant, which has been a source of "database is
+    // locked" errors on Windows even with busy_timeout configured.
+    ;(async () => {
+      await ensureRecipesLoaded()
+      await loadDayMeals(selDate)
+    })()
+  }
+
+  // user selects a recipe from the library to start editing quantities
+  const pickRecipe = (recipe) => {
+    setPickedRecipe(recipe)
+    setPickedRows(recipe.ingredients.map(i => ({
+      ingredient_id:   i.ingredient_id,
+      name:            i.name,
+      unit_label:      i.unit_label,
+      grams_per_unit:  i.grams_per_unit,
+      calories_per_100g: i.calories_per_100g,
+      protein_per_100g:  i.protein_per_100g,
+      carbs_per_100g:    i.carbs_per_100g,
+      fat_per_100g:      i.fat_per_100g,
+      quantity_g: i.quantity_g,
+    })))
+  }
+
+  const updatePickedRowGrams = (idx, grams) => {
+    setPickedRows(rows => rows.map((r, i) => i === idx ? { ...r, quantity_g: grams } : r))
+  }
+
+  const updatePickedRowUnits = (idx, units) => {
+    setPickedRows(rows => rows.map((r, i) => {
+      if (i !== idx) return r
+      const grams = (Number(units) || 0) * (r.grams_per_unit || 100)
+      return { ...r, quantity_g: +grams.toFixed(1) }
+    }))
+  }
+
+  const cancelPickedRecipe = () => { setPickedRecipe(null); setPickedRows([]) }
+
+  // live macro totals for the recipe currently being edited
+  const pickedTotals = pickedRows.reduce((acc, r) => {
+    const factor = (Number(r.quantity_g) || 0) / 100
+    return {
+      calories:  acc.calories  + r.calories_per_100g * factor,
+      protein_g: acc.protein_g + r.protein_per_100g  * factor,
+      carbs_g:   acc.carbs_g   + r.carbs_per_100g    * factor,
+      fat_g:     acc.fat_g     + r.fat_per_100g      * factor,
+    }
+  }, { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 })
+
+  const confirmAddMeal = async () => {
+    if (!pickedRecipe) return
+    setMealsSaving(true); setMealsError(null)
+    try {
+      await logMeal({
+        log_date: selDate,
+        recipe_id: pickedRecipe.id,
+        recipe_name_snapshot: pickedRecipe.name,
+        calories:  Math.round(pickedTotals.calories),
+        protein_g: +pickedTotals.protein_g.toFixed(1),
+        carbs_g:   +pickedTotals.carbs_g.toFixed(1),
+        fat_g:     +pickedTotals.fat_g.toFixed(1),
+      })
+      cancelPickedRecipe()
+      await loadDayMeals(selDate)
+      onSaved?.()
+    } catch (e) {
+      setMealsError(e.response?.data?.detail || e.message)
+    } finally {
+      setMealsSaving(false)
+    }
+  }
+
+  const removeMeal = async (mealId) => {
+    setMealsSaving(true); setMealsError(null)
+    try {
+      await deleteMealApi(mealId, selDate)
+      await loadDayMeals(selDate)
+      onSaved?.()
+    } catch (e) {
+      setMealsError(e.response?.data?.detail || e.message)
+    } finally {
+      setMealsSaving(false)
+    }
+  }
+
+  const dayMealTotals = dayMeals.reduce((acc, m) => ({
+    calories:  acc.calories  + (m.calories  ?? 0),
+    protein_g: acc.protein_g + (m.protein_g ?? 0),
+    carbs_g:   acc.carbs_g   + (m.carbs_g   ?? 0),
+    fat_g:     acc.fat_g     + (m.fat_g     ?? 0),
+  }), { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 })
+
+  const filteredRecipes = (recipes ?? []).filter(r => {
+    const matchSearch   = !recipeSearch || r.name.toLowerCase().includes(recipeSearch.toLowerCase())
+    const matchCategory = recipeCategory === 'All' || r.category === recipeCategory
+    return matchSearch && matchCategory
+  })
+
+  // Category pills shown above the recipe list, each with a live count.
+  // 'All' first, then the fixed category set in a stable order (matches
+  // the CHECK constraint in db/migrate_meals.py).
+  const recipeCategoryPills = ['All', 'Breakfast', 'Lunch/Dinner', 'Snack/Base'].map(cat => ({
+    key: cat,
+    count: cat === 'All'
+      ? (recipes ?? []).length
+      : (recipes ?? []).filter(r => r.category === cat).length,
+  }))
 
   const openEdit = () => {
     if (!selNutrition) return
@@ -147,9 +316,18 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
 
               {/* mode tabs */}
               <div className={styles.statusBtns}>
-                {[{k:'log',l:'Log nutrition'},{k:'missed',l:'Mark as missed'}].map(t=>(
-                  <button key={t.k} onClick={()=>setNMode(t.k)}
-                    className={`${styles.statusBtn} ${nMode===t.k?`${styles.active} ${styles[t.k==='log'?'workout':'missed']}`:''}`}>{t.l}</button>
+                {[{k:'log',l:'Manual totals'},{k:'meals',l:'From recipes'},{k:'missed',l:'Mark as missed'}].map(t=>(
+                  <button key={t.k} onClick={() => {
+                    setNMode(t.k)
+                    if (t.k === 'meals') {
+                      setMealsError(null)
+                      ;(async () => {
+                        await ensureRecipesLoaded()
+                        await loadDayMeals(selDate)
+                      })()
+                    }
+                  }}
+                    className={`${styles.statusBtn} ${nMode===t.k?`${styles.active} ${styles[t.k==='missed'?'missed':'workout']}`:''}`}>{t.l}</button>
                 ))}
               </div>
 
@@ -206,9 +384,189 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
                 </>
               )}
 
+              {nMode==='meals' && (
+                <div className={nutStyles.mealsWrap}>
+
+                  {/* logged meals so far today */}
+                  {mealsLoading && <div className={nutStyles.recipeHint}>Loading today's meals…</div>}
+                  {!mealsLoading && dayMeals.length > 0 && (() => {
+                    // compute status from accumulated meal totals vs plan targets
+                    const mealNutRow = {
+                      calories:  dayMealTotals.calories,
+                      protein_g: dayMealTotals.protein_g,
+                      carbs_g:   dayMealTotals.carbs_g,
+                      fat_g:     dayMealTotals.fat_g,
+                    }
+                    const st = deriveNutStatus(mealNutRow, targets)
+                    const STATUS_LABEL = { hit: 'On target', partial: 'Partial', off: 'Off plan', missed: 'Missed' }
+                    const STATUS_CLS   = { hit: nutStyles.mealStatusHit, partial: nutStyles.mealStatusPartial, off: nutStyles.mealStatusOff, missed: nutStyles.mealStatusMissed }
+                    return (
+                      <div className={nutStyles.loggedMealsBox}>
+                        <div className={nutStyles.loggedMealsHead}
+                          onClick={() => setMealsListCollapsed(c => !c)}
+                          style={{ cursor: 'pointer' }}>
+                          <span>
+                            {mealsListCollapsed ? '▶' : '▼'} {dayMeals.length} meal{dayMeals.length !== 1 ? 's' : ''} logged
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {st && <span className={`${nutStyles.mealStatusBadge} ${STATUS_CLS[st]}`}>{STATUS_LABEL[st]}</span>}
+                            <span className={nutStyles.loggedMealsTotal}>
+                              {Math.round(dayMealTotals.calories)} kcal · {Math.round(dayMealTotals.protein_g)}P
+                              / {Math.round(dayMealTotals.carbs_g)}C / {Math.round(dayMealTotals.fat_g)}F
+                            </span>
+                          </div>
+                        </div>
+                        {!mealsListCollapsed && dayMeals.map(m => (
+                          <div key={m.id} className={nutStyles.loggedMealRow}>
+                            <span className={nutStyles.loggedMealName}>
+                              {m.recipe_name_snapshot || 'Custom meal'}
+                            </span>
+                            <span className={nutStyles.loggedMealMacros}>
+                              {Math.round(m.calories)} kcal
+                            </span>
+                            <button className={nutStyles.loggedMealRemove}
+                              onClick={() => removeMeal(m.id)} disabled={mealsSaving}>✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+
+                  {!pickedRecipe ? (
+                    <>
+                      <div className={nutStyles.recipeSectionHead}
+                        onClick={() => setRecipesCollapsed(c => !c)}
+                        style={{ cursor: 'pointer' }}>
+                        <span>{recipesCollapsed ? '▶' : '▼'} Recipes</span>
+                        {recipes !== null && (
+                          <span className={nutStyles.recipeSectionCount}>
+                            {filteredRecipes.length} of {(recipes ?? []).length}
+                          </span>
+                        )}
+                      </div>
+
+                      {!recipesCollapsed && (
+                        <>
+                          <div className={nutStyles.recipeCatPills}>
+                            {recipeCategoryPills.map(c => (
+                              <button key={c.key}
+                                className={`${nutStyles.recipeCatPill} ${recipeCategory === c.key ? nutStyles.recipeCatPillActive : ''}`}
+                                onClick={() => setRecipeCategory(c.key)}>
+                                {c.key} <span className={nutStyles.recipeCatPillCount}>{c.count}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <input
+                            type="text" placeholder="Search recipes…"
+                            className={nutStyles.recipeSearch}
+                            value={recipeSearch}
+                            onChange={e => setRecipeSearch(e.target.value)}
+                          />
+                          {mealsError && (
+                            <p className={styles.error}>
+                              {mealsError}{' '}
+                              <button className="btn-ghost" style={{ padding: '2px 10px', fontSize: 11 }}
+                                onClick={() => { setRecipes(null); setRecipesFailed(false); setMealsError(null); ensureRecipesLoaded() }}>
+                                Retry
+                              </button>
+                            </p>
+                          )}
+                          <div className={nutStyles.recipePickList}>
+                            {recipes === null && <div className={nutStyles.recipeHint}>Loading recipes…</div>}
+                            {recipes !== null && !mealsError && filteredRecipes.length === 0 && (
+                              <div className={nutStyles.recipeHint}>
+                                {recipeCategory === 'All'
+                                  ? <>No recipes found. Add some in the Recipes &amp; Ingredients tab.</>
+                                  : <>No {recipeCategory} recipes{recipeSearch ? ' match your search' : ''}. Try a different category.</>}
+                              </div>
+                            )}
+                            {filteredRecipes.map(r => (
+                              <button key={r.id} className={nutStyles.recipePickRow} onClick={() => { pickRecipe(r); setRecipesCollapsed(true) }}>
+                                {r.image_url && (
+                                  <img src={r.image_url} alt="" className={nutStyles.recipePickThumb}
+                                    onError={e => { e.currentTarget.style.display = 'none' }} />
+                                )}
+                                <span className={nutStyles.recipePickName}>{r.name}</span>
+                                <span className={nutStyles.recipePickMacros}>
+                                  {Math.round(r.total_calories)} kcal · {Math.round(r.total_protein)}P
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div className={nutStyles.recipeEditor}>
+                      <div className={nutStyles.recipeEditorHead}>
+                        <span className={nutStyles.recipeEditorName}>{pickedRecipe.name}</span>
+                        <button className="btn-ghost" style={{padding:'4px 10px',fontSize:11}}
+                          onClick={cancelPickedRecipe}>← Back</button>
+                      </div>
+
+                      {pickedRows.map((row, idx) => {
+                        const qtyUnits = row.grams_per_unit
+                          ? +(Number(row.quantity_g) / row.grams_per_unit).toFixed(2)
+                          : null
+                        const isNaturalUnit = row.unit_label !== 'g' && row.unit_label !== 'ml'
+                        return (
+                          <div key={idx} className={nutStyles.ingEditRow}>
+                            <span className={nutStyles.ingEditName}>{row.name}</span>
+                            <div className={nutStyles.ingEditQty}>
+                              <input type="number" min="0" step="1"
+                                value={row.quantity_g}
+                                onChange={e => updatePickedRowGrams(idx, e.target.value)} />
+                              <span className={nutStyles.ingEditUnit}>g</span>
+                              {isNaturalUnit && (
+                                <>
+                                  <span className={nutStyles.ingEditOr}>/</span>
+                                  <input type="number" min="0" step="0.25"
+                                    value={qtyUnits ?? ''}
+                                    onChange={e => updatePickedRowUnits(idx, e.target.value)} />
+                                  <span className={nutStyles.ingEditUnit}>{row.unit_label}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      <div className={nutStyles.recipeEditorTotals}>
+                        <span>{Math.round(pickedTotals.calories)} kcal</span>
+                        <span>{Math.round(pickedTotals.protein_g)}g protein</span>
+                        <span>{Math.round(pickedTotals.carbs_g)}g carbs</span>
+                        <span>{Math.round(pickedTotals.fat_g)}g fat</span>
+                      </div>
+
+                      {mealsError && <p className={styles.error}>{mealsError}</p>}
+                      <button className="btn-primary" style={{width:'100%'}}
+                        onClick={confirmAddMeal} disabled={mealsSaving}>
+                        {mealsSaving ? 'Adding…' : 'Add this meal'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className={styles.actions}>
-                {error && <span className={styles.error}>{error}</span>}
-                {editMode && !confirmDel && (
+                {nMode!=='meals' && error && <span className={styles.error}>{error}</span>}
+                {nMode==='meals' && (
+                  <>
+                    {dayMeals.length === 0 && (
+                      <span style={{fontSize:11,color:'var(--muted)',flex:1}}>
+                        No meals logged yet — pick a recipe above to start.
+                      </span>
+                    )}
+                    <button
+                      onClick={close}
+                      disabled={mealsSaving}
+                      style={{ marginLeft: 'auto' }}
+                    >
+                      {dayMeals.length > 0 ? 'Save & Done' : 'Cancel'}
+                    </button>
+                  </>
+                )}
+                {editMode && !confirmDel && nMode!=='meals' && (
                   <button className="btn-ghost" style={{color:'var(--danger)',borderColor:'transparent',marginRight:'auto'}}
                     onClick={()=>setConfirmDel(true)}>Delete</button>
                 )}
@@ -219,7 +577,7 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
                     <button className="btn-ghost" onClick={()=>setConfirmDel(false)}>Cancel</button>
                   </>
                 )}
-                {!confirmDel && (
+                {!confirmDel && nMode!=='meals' && (
                   <>
                     <button onClick={handleSubmit} disabled={saving}>
                       {saving?'Saving…':nMode==='missed'?'Mark as missed':editMode?'Save changes':'Save log'}
@@ -298,5 +656,5 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
     )
   }
 
-  return { modal, openLog, openEdit, openDetail, close, Modals }
+  return { modal, openLog, openMeals, openEdit, openDetail, close, Modals }
 }

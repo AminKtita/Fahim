@@ -75,6 +75,31 @@ def get_exercise_context(user_message):
 
     return "\n".join(lines)
 
+def get_exercise_library_context():
+    """
+    Returns a compact listing of the canonical exercise library — just
+    exercise_id, name, body part, and equipment per row, kept short
+    deliberately since this gets injected into every relevant prompt.
+    This is what lets the AI use real exercise_id values instead of
+    guessing or inventing them.
+    """
+    rows = mm.get_exercise_library()
+    if not rows:
+        return ""
+
+    lines = ["# Exercise Library (use exercise_id exactly as shown when it matches)"]
+    for r in rows:
+        bits = [r["exercise_id"]]
+        if r.get("exercise_name"):
+            bits.append(f"\"{r['exercise_name']}\"")
+        meta = " · ".join(x for x in [r.get("body_part"), r.get("equipment")] if x)
+        if meta:
+            bits.append(f"({meta})")
+        lines.append(" ".join(bits))
+
+    return "\n".join(lines)
+
+
 def get_weight_context():
 
     rows = mm.get_weight_trend(60)

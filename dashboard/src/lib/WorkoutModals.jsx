@@ -1,17 +1,14 @@
 /**
  * WorkoutModals — shared workout log/edit/detail/plan-detail modals
  * Used by both Schedule and Workouts pages.
- *
- * Usage:
- *   const wm = useWorkoutModals({ plan, selDate, selWorkout, onSaved })
- *   {wm.modal && <wm.Modals />}
- *   <button onClick={() => wm.openLog()}>+ LOG</button>
- *   <button onClick={() => wm.openEdit()}>edit</button>
- *   <button onClick={() => wm.openDetail()}>details</button>
  */
 
 import { useState } from 'react'
-import { logWorkout, updateWorkout, deleteWorkout } from './api'
+import { logWorkout, updateWorkout, deleteWorkout, getExerciseLibrary, getExerciseImages } from './api'
+import { useApi } from '../hooks/useApi'
+import ExerciseInput from '../components/ui/ExerciseInput'
+import ExerciseFlicker from '../components/ui/ExerciseFlicker'
+import { jsonArrayToText, jsonArrayToList } from './exerciseGrouping'
 import styles from './WorkoutModals.module.css'
 import dayjs from 'dayjs'
 
@@ -40,27 +37,31 @@ function buildPrefilledSets(planDay) {
   return planDay.exercises
     .sort((a,b)=>(a.order_index??0)-(b.order_index??0))
     .map(ex => ({
-      exercise:  ex.exercise ?? '',
-      sets:      ex.sets ?? 1,
-      reps:      parseMaxReps(ex.reps),
-      weight_kg: '',
-      rpe:       '',
-      is_warmup: false,
+      exercise:    ex.exercise ?? '',
+      exercise_id: ex.exercise_id ?? null,
+      sets:        ex.sets ?? 1,
+      reps:        parseMaxReps(ex.reps),
+      weight_kg:   '',
+      rpe:         '',
+      is_warmup:   false,
     }))
 }
 
-const blankSet = () => ({ exercise:'', sets:1, reps:'', weight_kg:'', rpe:'', is_warmup:false })
+const blankSet = () => ({ exercise:'', exercise_id:null, sets:1, reps:'', weight_kg:'', rpe:'', is_warmup:false })
 const positiveNum = v => (!v || Number(v) > 0) ? v : ''
 
 export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
-  const [modal,    setModal]    = useState(null) // null | 'log' | 'detail' | 'planDetail'
-  const [dayStatus,setDayStatus]= useState('workout')
-  const [form,     setForm]     = useState({})
-  const [sets,     setSets]     = useState([])
-  const [saving,   setSaving]   = useState(false)
-  const [error,    setError]    = useState(null)
-  const [editId,   setEditId]   = useState(null)
-  const [confirmDel,setConfirmDel]=useState(false)
+  const [modal,             setModal]             = useState(null)
+  const [dayStatus,         setDayStatus]         = useState('workout')
+  const [form,              setForm]              = useState({})
+  const [sets,              setSets]              = useState([])
+  const [saving,            setSaving]            = useState(false)
+  const [error,             setError]             = useState(null)
+  const [editId,            setEditId]            = useState(null)
+  const [confirmDel,        setConfirmDel]        = useState(false)
+  const [planDetailExercise,setPlanDetailExercise]= useState(null)
+
+  const { data: exerciseLibrary } = useApi(getExerciseLibrary)
 
   const selPlanDay = selDate ? getPlanDayForDate(plan, selDate) : null
 
@@ -82,22 +83,38 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
     setForm({ date:selWorkout.date, session_type:selWorkout.session_type??'general', duration_min:selWorkout.duration_min??'', perceived_effort:selWorkout.perceived_effort??'', notes:selWorkout.notes??'' })
     const grouped = []; const seen = {}
     ;(selWorkout.sets??[]).filter(s=>!s.is_warmup).forEach(s => {
-      if (!seen[s.exercise]) { seen[s.exercise]={exercise:s.exercise,sets:0,reps:s.reps??'',weight_kg:s.weight_kg??'',rpe:s.rpe??'',is_warmup:false}; grouped.push(seen[s.exercise]) }
-      seen[s.exercise].sets+=1
+      if (!seen[s.exercise]) {
+        seen[s.exercise] = { exercise:s.exercise, exercise_id:s.exercise_id??null, sets:0, reps:s.reps??'', weight_kg:s.weight_kg??'', rpe:s.rpe??'', is_warmup:false }
+        grouped.push(seen[s.exercise])
+      }
+      seen[s.exercise].sets += 1
     })
     setSets(grouped.length ? grouped : [blankSet()])
     setError(null); setConfirmDel(false)
     setModal('log')
   }
 
-  const openDetail = () => setModal('detail')
-  const openPlanDetail = () => setModal('planDetail')
-  const close = () => setModal(null)
+  const openDetail     = () => setModal('detail')
+  const openPlanDetail = () => { setPlanDetailExercise(null); setModal('planDetail') }
+
+  const openPlanExerciseDetail = async (ex) => {
+    setPlanDetailExercise(ex)
+    if (ex.exercise_id) {
+      const images = await getExerciseImages(ex.exercise_id)
+      setPlanDetailExercise(prev =>
+        (prev === ex || prev?.exercise_id === ex.exercise_id) ? { ...ex, images } : prev
+      )
+    }
+  }
+
+  const close = () => { setModal(null); setPlanDetailExercise(null) }
 
   const setF = (k,v) => setForm(f=>({...f,[k]:v}))
   const setS = (i,k,v) => setSets(p=>p.map((s,idx)=>idx===i?{...s,[k]:v}:s))
-  const addSet = () => setSets(p=>[...p,blankSet()])
-  const removeSet = i => setSets(p=>p.filter((_,idx)=>idx!==i))
+  const setExercise = (i, text, libraryMatch) =>
+    setSets(p=>p.map((s,idx)=>idx===i?{...s,exercise:text,exercise_id:libraryMatch?.exercise_id??null}:s))
+  const addSet    = () => setSets(p=>[...p,blankSet()])
+  const removeSet = i  => setSets(p=>p.filter((_,idx)=>idx!==i))
 
   const handleSubmit = async () => {
     setError(null)
@@ -108,22 +125,31 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
       if (sets.length===0)        { setError('Add at least one exercise.'); return }
       for (let i=0;i<sets.length;i++) {
         const s=sets[i]
-        if (!s.exercise?.trim())                   { setError(`Row ${i+1}: exercise name required.`); return }
-        if (!s.sets||Number(s.sets)<1)             { setError(`Row ${i+1}: sets count required.`); return }
-        if (!s.reps||Number(s.reps)<1)             { setError(`Row ${i+1}: reps required.`); return }
-        if (s.weight_kg===''||s.weight_kg==null)   { setError(`Row ${i+1}: weight required (0 = bodyweight).`); return }
+        if (!s.exercise?.trim())                 { setError(`Row ${i+1}: exercise name required.`); return }
+        if (!s.sets||Number(s.sets)<1)           { setError(`Row ${i+1}: sets count required.`); return }
+        if (!s.reps||Number(s.reps)<1)           { setError(`Row ${i+1}: reps required.`); return }
+        if (s.weight_kg===''||s.weight_kg==null) { setError(`Row ${i+1}: weight required (0 = bodyweight).`); return }
       }
     }
     setSaving(true)
     try {
       const payload = isRM
-        ? { date:selDate, session_type:dayStatus, duration_min:null, perceived_effort:null, notes:dayStatus==='rest'?'Rest day':'Missed session', sets:[] }
-        : { ...form, duration_min:form.duration_min?Number(form.duration_min):null, perceived_effort:form.perceived_effort?Number(form.perceived_effort):null,
-            sets: sets.filter(s=>s.exercise).flatMap((s,ei)=>Array.from({length:Number(s.sets)||1},(_,k)=>({
-              exercise:s.exercise, set_number:ei*10+k+1,
-              reps:s.reps?Number(s.reps):null, weight_kg:s.weight_kg!==''?Number(s.weight_kg):null,
-              rpe:s.rpe?Number(s.rpe):null, is_warmup:false,
-            }))) }
+        ? { date:selDate, session_type:dayStatus, duration_min:null, perceived_effort:null,
+            notes:dayStatus==='rest'?'Rest day':'Missed session', sets:[] }
+        : { ...form,
+            duration_min:form.duration_min?Number(form.duration_min):null,
+            perceived_effort:form.perceived_effort?Number(form.perceived_effort):null,
+            sets: sets.filter(s=>s.exercise).flatMap((s,ei)=>
+              Array.from({length:Number(s.sets)||1},(_,k)=>({
+                exercise:s.exercise, exercise_id:s.exercise_id||null,
+                set_number:ei*10+k+1,
+                reps:s.reps?Number(s.reps):null,
+                weight_kg:s.weight_kg!==''?Number(s.weight_kg):null,
+                rpe:s.rpe?Number(s.rpe):null,
+                is_warmup:false,
+              }))
+            )
+          }
       if (editId) await updateWorkout(editId, payload)
       else        await logWorkout(payload)
       setModal(null); onSaved?.()
@@ -174,7 +200,9 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                         <div key={i} className={styles.planPreviewRow}>
                           <span className={styles.planPreviewName}>{ex.exercise}</span>
                           <span className={styles.planPreviewDetail}>
-                            {ex.sets ?? '?'} × {ex.reps ?? '?'}{ex.rir != null ? ` · ${ex.rir} RiR` : ''}{ex.progression_rule ? ` · ${ex.progression_rule}` : ''}
+                            {ex.sets??'?'} × {ex.reps??'?'}
+                            {ex.rir!=null?` · ${ex.rir} RiR`:''}
+                            {ex.progression_rule?` · ${ex.progression_rule}`:''}
                           </span>
                         </div>
                       ))}
@@ -209,19 +237,28 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                   </div>
                   {sets.map((s,i)=>(
                     <div key={i} className={styles.setRow}>
-                      <input placeholder="exercise name" value={s.exercise} onChange={e=>setS(i,'exercise',e.target.value)}/>
-                      <input type="number" min="1" placeholder="3" value={s.sets} onChange={e=>setS(i,'sets',positiveNum(e.target.value))}/>
-                      <input type="number" min="1" placeholder="—" value={s.reps} onChange={e=>setS(i,'reps',positiveNum(e.target.value))}/>
-                      <input type="number" min="0" placeholder="—" value={s.weight_kg} onChange={e=>setS(i,'weight_kg',positiveNum(e.target.value))}/>
+                      <ExerciseInput
+                        value={s.exercise}
+                        onChange={(text,ex)=>setExercise(i,text,ex)}
+                        library={exerciseLibrary ?? []}
+                      />
+                      <input type="number" min="1" placeholder="3" value={s.sets}
+                        onChange={e=>setS(i,'sets',positiveNum(e.target.value))}/>
+                      <input type="number" min="1" placeholder="—" value={s.reps}
+                        onChange={e=>setS(i,'reps',positiveNum(e.target.value))}/>
+                      <input type="number" min="0" placeholder="—" value={s.weight_kg}
+                        onChange={e=>setS(i,'weight_kg',positiveNum(e.target.value))}/>
                       <input type="number" min="1" max="10" placeholder="—" value={s.rpe}
                         onChange={e=>{const v=Number(e.target.value);if(e.target.value===''||v>=1&&v<=10)setS(i,'rpe',e.target.value)}}/>
-                      <button className="btn-ghost" style={{padding:'2px 6px',fontSize:10,borderColor:'transparent'}} onClick={()=>removeSet(i)}>✕</button>
+                      <button className="btn-ghost" style={{padding:'2px 6px',fontSize:10,borderColor:'transparent'}}
+                        onClick={()=>removeSet(i)}>✕</button>
                     </div>
                   ))}
 
                   <div className={styles.field} style={{marginTop:12}}>
                     <label className={styles.label}>Notes</label>
-                    <input type="text" placeholder="optional" value={form.notes} onChange={e=>setF('notes',e.target.value)}/>
+                    <input type="text" placeholder="optional" value={form.notes}
+                      onChange={e=>setF('notes',e.target.value)}/>
                   </div>
                 </>
               )}
@@ -233,13 +270,16 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
               <div className={styles.actions}>
                 {error && <span className={styles.error}>{error}</span>}
                 {editId && !confirmDel && (
-                  <button className="btn-ghost" style={{color:'var(--danger)',borderColor:'transparent',marginRight:'auto'}}
+                  <button className="btn-ghost"
+                    style={{color:'var(--danger)',borderColor:'transparent',marginRight:'auto'}}
                     onClick={()=>setConfirmDel(true)}>Delete</button>
                 )}
                 {confirmDel && (
                   <>
                     <span style={{fontSize:12,color:'var(--warn)',flex:1}}>Delete this workout?</span>
-                    <button className="btn-danger" onClick={handleDelete} disabled={saving}>{saving?'…':'Confirm delete'}</button>
+                    <button className="btn-danger" onClick={handleDelete} disabled={saving}>
+                      {saving?'…':'Confirm delete'}
+                    </button>
                     <button className="btn-ghost" onClick={()=>setConfirmDel(false)}>Cancel</button>
                   </>
                 )}
@@ -282,12 +322,17 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                 <>
                   <div className={styles.sectionMono}>Sets</div>
                   <table className={styles.detailTable}>
-                    <thead><tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th><th>RPE</th></tr></thead>
+                    <thead>
+                      <tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>Weight</th><th>RPE</th></tr>
+                    </thead>
                     <tbody>
                       {(() => {
                         const grouped=[]; const seen={}
                         selWorkout.sets.filter(s=>!s.is_warmup).forEach(s=>{
-                          if(!seen[s.exercise]){seen[s.exercise]={exercise:s.exercise,count:0,reps:s.reps,weight_kg:s.weight_kg,rpe:s.rpe};grouped.push(seen[s.exercise])}
+                          if(!seen[s.exercise]){
+                            seen[s.exercise]={exercise:s.exercise,count:0,reps:s.reps,weight_kg:s.weight_kg,rpe:s.rpe}
+                            grouped.push(seen[s.exercise])
+                          }
                           seen[s.exercise].count+=1
                         })
                         return grouped.map((g,i)=>(
@@ -305,7 +350,12 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
                 </>
               )}
 
-              {selWorkout.notes&&<div className={styles.notesBlock}><div className={styles.sectionMono}>Notes</div><p className={styles.notesText}>{selWorkout.notes}</p></div>}
+              {selWorkout.notes && (
+                <div className={styles.notesBlock}>
+                  <div className={styles.sectionMono}>Notes</div>
+                  <p className={styles.notesText}>{selWorkout.notes}</p>
+                </div>
+              )}
 
               <div className={styles.actions}>
                 <button className="btn-ghost" onClick={()=>{close();setTimeout(openEdit,50)}}>Edit workout</button>
@@ -320,26 +370,162 @@ export function useWorkoutModals({ plan, selDate, selWorkout, onSaved }) {
           <div className={styles.modal}>
             <div className={styles.mHead}>
               <div className={styles.mTitle}>
-                <span className={styles.mLabel}>Plan detail</span>
-                <span className={styles.mDate}>{selPlanDay.day_name} · {selPlanDay.session_type}</span>
+                {planDetailExercise ? (
+                  <>
+                    <button className={styles.mBack} onClick={()=>setPlanDetailExercise(null)}>← Back</button>
+                    <span className={styles.mLabel}>{planDetailExercise.exercise_name ?? planDetailExercise.exercise}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className={styles.mLabel}>Plan detail</span>
+                    <span className={styles.mDate}>{selPlanDay.day_name} · {selPlanDay.session_type}</span>
+                  </>
+                )}
               </div>
               <button className={styles.mClose} onClick={close}>✕</button>
             </div>
+
             <div className={styles.mBody}>
-              {selPlanDay.exercises?.sort((a,b)=>(a.order_index??0)-(b.order_index??0)).map((ex,i)=>(
-                <div key={i} className={styles.planDetailCard}>
-                  <div className={styles.planDetailHeader}>
-                    <span className={styles.planDetailName}>{ex.exercise}</span>
-                    <span className={styles.planDetailSets}>{ex.sets ?? '?'} × {ex.reps ?? '?'}</span>
+              {!planDetailExercise ? (
+
+                /* ── LIST VIEW ── */
+                <>
+                  {selPlanDay.exercises
+                    ?.sort((a,b)=>(a.order_index??0)-(b.order_index??0))
+                    .map((ex,i)=>(
+                      <div
+                        key={i}
+                        className={`${styles.planDetailCard} ${styles.planDetailCardClickable}`}
+                        onClick={()=>openPlanExerciseDetail(ex)}
+                      >
+                        <div className={styles.planDetailRow}>
+                          <ExerciseFlicker
+                            key={ex.exercise_id ?? ex.exercise}
+                            images={ex.images}
+                            alt=""
+                            className={styles.planDetailThumb}
+                            placeholderClassName={styles.planDetailThumbPlaceholder}
+                            placeholderText={(ex.body_part ?? '?').charAt(0).toUpperCase()}
+                          />
+                          <div className={styles.planDetailInfo}>
+                            <div className={styles.planDetailHeader}>
+                              <span className={styles.planDetailName}>{ex.exercise_name ?? ex.exercise}</span>
+                              <span className={styles.planDetailSets}>{ex.sets??'?'} × {ex.reps??'?'}</span>
+                            </div>
+                            <div className={styles.planDetailMeta}>
+                              {ex.rir!=null&&<span className={styles.planDetailTag}>RiR {ex.rir}</span>}
+                              {ex.rest_sec!=null&&<span className={styles.planDetailTag}>{ex.rest_sec}s rest</span>}
+                              {ex.tempo&&<span className={styles.planDetailTag}>{ex.tempo}</span>}
+                              {ex.body_part&&<span className={styles.planDetailTag}>{ex.body_part}</span>}
+                              {ex.equipment&&<span className={styles.planDetailTag}>{ex.equipment}</span>}
+                            </div>
+                            {ex.progression_rule&&<div className={styles.planDetailProg}>{ex.progression_rule}</div>}
+                          </div>
+                          <span className={styles.planDetailChevron}>›</span>
+                        </div>
+                      </div>
+                    ))
+                  }
+                  <div className={styles.actions}>
+                    <button className="btn-ghost" onClick={close}>Close</button>
                   </div>
+                </>
+
+              ) : (
+
+                /* ── EXERCISE DETAIL SUB-VIEW ── */
+                <div className={styles.exDetailWrap}>
+                  {planDetailExercise.images?.length > 0 && (
+                    <ExerciseFlicker
+                      key={planDetailExercise.exercise_id ?? planDetailExercise.exercise}
+                      images={planDetailExercise.images}
+                      alt=""
+                      className={styles.exDetailImage}
+                    />
+                  )}
+
                   <div className={styles.planDetailMeta}>
-                    {ex.rir!=null&&<span className={styles.planDetailTag}>RiR {ex.rir}</span>}
-                    {ex.progression_rule&&<span className={styles.planDetailProg}>{ex.progression_rule}</span>}
+                    {planDetailExercise.sets!=null&&<span className={styles.planDetailTag}>{planDetailExercise.sets} sets</span>}
+                    {planDetailExercise.reps&&<span className={styles.planDetailTag}>{planDetailExercise.reps} reps</span>}
+                    {planDetailExercise.rir!=null&&<span className={styles.planDetailTag}>RiR {planDetailExercise.rir}</span>}
+                    {planDetailExercise.rest_sec!=null&&<span className={styles.planDetailTag}>{planDetailExercise.rest_sec}s rest</span>}
+                    {planDetailExercise.tempo&&<span className={styles.planDetailTag}>tempo {planDetailExercise.tempo}</span>}
+                    {planDetailExercise.body_part&&<span className={styles.planDetailTag}>{planDetailExercise.body_part}</span>}
+                    {planDetailExercise.equipment&&<span className={styles.planDetailTag}>{planDetailExercise.equipment}</span>}
+                    {planDetailExercise.difficulty&&<span className={styles.planDetailTag}>{planDetailExercise.difficulty}</span>}
                   </div>
-                  {ex.notes&&<p className={styles.planDetailNotes}>{ex.notes}</p>}
+
+                  {planDetailExercise.progression_rule&&(
+                    <div className={styles.exDetailSection}>
+                      <div className={styles.exDetailLabel}>Progression</div>
+                      <p className={styles.exDetailText}>{planDetailExercise.progression_rule}</p>
+                    </div>
+                  )}
+
+                  {planDetailExercise.instructions&&(
+                    <div className={styles.exDetailSection}>
+                      <div className={styles.exDetailLabel}>Instructions</div>
+                      <p className={styles.exDetailText}>{planDetailExercise.instructions}</p>
+                    </div>
+                  )}
+
+                  {jsonArrayToText(planDetailExercise.primary_muscles)&&(
+                    <div className={styles.exDetailSection}>
+                      <div className={styles.exDetailLabel}>Primary muscles</div>
+                      <p className={styles.exDetailText}>{jsonArrayToText(planDetailExercise.primary_muscles)}</p>
+                    </div>
+                  )}
+
+                  {jsonArrayToText(planDetailExercise.secondary_muscles)&&(
+                    <div className={styles.exDetailSection}>
+                      <div className={styles.exDetailLabel}>Secondary muscles</div>
+                      <p className={styles.exDetailText}>{jsonArrayToText(planDetailExercise.secondary_muscles)}</p>
+                    </div>
+                  )}
+
+                  {jsonArrayToList(planDetailExercise.technique_cues).length>0&&(
+                    <div className={styles.exDetailSection}>
+                      <div className={styles.exDetailLabel}>Technique cues</div>
+                      <ul className={styles.exDetailList}>
+                        {jsonArrayToList(planDetailExercise.technique_cues).map((c,i)=><li key={i}>{c}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  {jsonArrayToList(planDetailExercise.common_mistakes).length>0&&(
+                    <div className={styles.exDetailSection}>
+                      <div className={styles.exDetailLabel}>Common mistakes</div>
+                      <ul className={styles.exDetailList}>
+                        {jsonArrayToList(planDetailExercise.common_mistakes).map((c,i)=><li key={i}>{c}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  {planDetailExercise.notes&&(
+                    <div className={styles.exDetailSection}>
+                      <div className={styles.exDetailLabel}>Notes</div>
+                      <p className={styles.exDetailText}>{planDetailExercise.notes}</p>
+                    </div>
+                  )}
+
+                  {planDetailExercise.video_url&&(
+                    <a href={planDetailExercise.video_url} target="_blank" rel="noreferrer"
+                      className={styles.exDetailVideoLink}>
+                      ▶ Watch technique video
+                    </a>
+                  )}
+
+                  {!planDetailExercise.exercise_id&&(
+                    <p className={styles.exDetailNotInLibrary}>
+                      This exercise isn't in your library yet, so only the prescription details above are available.
+                    </p>
+                  )}
+
+                  <div className={styles.actions}>
+                    <button className="btn-ghost" onClick={()=>setPlanDetailExercise(null)}>← Back to plan</button>
+                  </div>
                 </div>
-              ))}
-              <div className={styles.actions}><button className="btn-ghost" onClick={close}>Close</button></div>
+              )}
             </div>
           </div>
         )}

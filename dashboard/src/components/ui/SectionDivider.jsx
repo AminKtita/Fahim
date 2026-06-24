@@ -1,4 +1,4 @@
-import styles from './SectionDivider.module.css'
+import styles from './Sectiondivider.module.css'
 
 export default function SectionDivider({ label }) {
   return (

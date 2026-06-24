@@ -3,6 +3,7 @@ import { useApi } from '../hooks/useApi'
 import { getNutrition, getPlan } from '../lib/api'
 import { useStatus } from '../lib/StatusContext'
 import { useNutritionModals, deriveNutStatus } from '../lib/NutritionModals'
+import MealLibrary from '../lib/MealLibrary'
 import Panel from '../components/ui/Panel'
 import SectionDivider from '../components/ui/SectionDivider'
 import MacroBar from '../components/ui/Macrobar'
@@ -19,7 +20,14 @@ const STATUS_CLS = {
 
 const STATUS_LABEL = { hit: 'On target', partial: 'Partial', off: 'Off plan', missed: 'Missed' }
 
+const TOP_TABS = [
+  { key: 'log',     label: 'Log & Tracking' },
+  { key: 'library',  label: 'Recipes & Ingredients' },
+]
+
 export default function Nutrition() {
+  const [topTab, setTopTab] = useState('log')
+
   const { refresh: refreshStatus } = useStatus()
   const { data: nutrition, refetch } = useApi(() => getNutrition(30))
   const { data: plan }               = useApi(getPlan)
@@ -57,15 +65,35 @@ export default function Nutrition() {
       <div className={styles.pageHeader}>
         <div>
           <div className={styles.pageTitle}>Nutrition</div>
-          <div className={styles.pageSub}>Daily intake log and macro tracking.</div>
+          <div className={styles.pageSub}>Daily intake log, macro tracking, and your recipe library.</div>
         </div>
-        {!todayNut?.calories && !isMissedToday && (
-          <button className="btn-primary" onClick={todayModals.openLog}>
-            Log today
-          </button>
+        {topTab === 'log' && !todayNut?.calories && !isMissedToday && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn-ghost" onClick={todayModals.openMeals}>
+              Add from recipe
+            </button>
+            <button className="btn-primary" onClick={todayModals.openLog}>
+              Log today
+            </button>
+          </div>
         )}
       </div>
 
+      {/* TOP-LEVEL SECTION TABS */}
+      <div className={styles.topTabs}>
+        {TOP_TABS.map(t => (
+          <button key={t.key}
+            className={`${styles.topTab} ${topTab === t.key ? styles.topTabActive : ''}`}
+            onClick={() => setTopTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {topTab === 'library' && <MealLibrary />}
+
+      {topTab === 'log' && (
+        <>
       {/* TODAY */}
       <SectionDivider label="Today's intake" />
       <div className={styles.todayGrid}>
@@ -109,6 +137,8 @@ export default function Nutrition() {
               </div>
               <div className={styles.todayBtns}>
                 <button className="btn-ghost" style={{ padding: '5px 14px', fontSize: 11 }}
+                  onClick={todayModals.openMeals}>Add meal</button>
+                <button className="btn-ghost" style={{ padding: '5px 14px', fontSize: 11 }}
                   onClick={todayModals.openEdit}>Edit</button>
                 <button className="btn-ghost" style={{ padding: '5px 14px', fontSize: 11 }}
                   onClick={todayModals.openDetail}>Details →</button>
@@ -118,9 +148,14 @@ export default function Nutrition() {
             <div className={styles.todayEmpty}>
               <span className={styles.todayEmptyIcon}>🥗</span>
               <span className={styles.todayEmptyText}>No nutrition logged today</span>
-              <button className="btn-primary" style={{ marginTop: 4 }} onClick={todayModals.openLog}>
-                Log today's intake
-              </button>
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button className="btn-ghost" onClick={todayModals.openMeals}>
+                  Add from recipe
+                </button>
+                <button className="btn-primary" onClick={todayModals.openLog}>
+                  Log today's intake
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -287,6 +322,8 @@ export default function Nutrition() {
           </div>
         )}
       </Panel>
+        </>
+      )}
 
       {todayModals.Modals()}
       {histModals.Modals()}

@@ -48,7 +48,8 @@ def log_nutrition(data: NutritionIn):
 
 @router.patch("/{log_date}")
 def update_nutrition(log_date: str, data: NutritionIn):
-    with get_conn() as conn:
+    conn = get_conn()
+    try:
         fields, values = [], []
         if data.calories  is not None: fields.append("calories = ?");  values.append(data.calories)
         if data.protein_g is not None: fields.append("protein_g = ?"); values.append(data.protein_g)
@@ -59,13 +60,20 @@ def update_nutrition(log_date: str, data: NutritionIn):
         if fields:
             values.append(log_date)
             conn.execute(f"UPDATE nutrition_log SET {', '.join(fields)} WHERE date = ?", values)
+        conn.commit()
+    finally:
+        conn.close()
     snapshot_writer.update_all()
     return {"status": "updated"}
 
 
 @router.delete("/{log_date}")
 def delete_nutrition(log_date: str):
-    with get_conn() as conn:
+    conn = get_conn()
+    try:
         conn.execute("DELETE FROM nutrition_log WHERE date = ?", (log_date,))
+        conn.commit()
+    finally:
+        conn.close()
     snapshot_writer.update_all()
     return {"status": "deleted"}

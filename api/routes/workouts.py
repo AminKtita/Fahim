@@ -24,6 +24,10 @@ class SetIn(BaseModel):
     rpe: Optional[int] = None
     is_warmup: bool = False
     notes: Optional[str] = None
+    # Optional link to the canonical exercises library row. Metadata
+    # (equipment, body part, cues, media) is not duplicated here — it's
+    # fetched via JOIN against the exercises table when reading sets back.
+    exercise_id: Optional[str] = None
 
 
 class WorkoutIn(BaseModel):
@@ -80,6 +84,7 @@ def log_workout(data: WorkoutIn):
             rpe=s.rpe,
             is_warmup=s.is_warmup,
             notes=s.notes,
+            exercise_id=s.exercise_id,
         )
     snapshot_writer.update_all()
     return {"status": "saved", "workout_id": workout_id}
@@ -87,7 +92,8 @@ def log_workout(data: WorkoutIn):
 
 @router.patch("/{workout_id}")
 def update_workout(workout_id: int, data: WorkoutPatch):
-    with get_conn() as conn:
+    conn = get_conn()
+    try:
         fields, values = [], []
         if data.session_type   is not None: fields.append("session_type = ?");   values.append(data.session_type)
         if data.duration_min   is not None: fields.append("duration_min = ?");   values.append(data.duration_min)
@@ -101,17 +107,26 @@ def update_workout(workout_id: int, data: WorkoutPatch):
             conn.execute("DELETE FROM workout_sets WHERE workout_id = ?", (workout_id,))
             for i, s in enumerate(data.sets, 1):
                 conn.execute(
-                    "INSERT INTO workout_sets (workout_id, exercise, set_number, reps, weight_kg, rpe, is_warmup, notes) VALUES (?,?,?,?,?,?,?,?)",
-                    (workout_id, s.exercise, s.set_number or i, s.reps, s.weight_kg, s.rpe, s.is_warmup, s.notes)
+                    """INSERT INTO workout_sets
+                        (workout_id, exercise, exercise_id, set_number, reps, weight_kg, rpe, is_warmup, notes)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (workout_id, s.exercise, s.exercise_id, s.set_number or i, s.reps, s.weight_kg, s.rpe, s.is_warmup, s.notes)
                 )
+        conn.commit()
+    finally:
+        conn.close()
     snapshot_writer.update_all()
     return {"status": "updated"}
 
 
 @router.delete("/{workout_id}")
 def delete_workout(workout_id: int):
-    with get_conn() as conn:
+    conn = get_conn()
+    try:
         conn.execute("DELETE FROM workout_sets WHERE workout_id = ?", (workout_id,))
         conn.execute("DELETE FROM workouts WHERE id = ?", (workout_id,))
+        conn.commit()
+    finally:
+        conn.close()
     snapshot_writer.update_all()
     return {"status": "deleted"}

@@ -3,6 +3,7 @@ from datetime import date
 
 from retrieval import (
     get_exercise_context,
+    get_exercise_library_context,
     get_weight_context,
     get_goal_context
 )
@@ -227,6 +228,23 @@ Update an existing goal's current_value when:
 - Don't create or update goals for trivial/one-off mentions with no
   measurable target.
 
+## EXERCISE LIBRARY
+The athlete has a canonical exercise library (visible in your context as
+exercise data when relevant). Each library exercise has a stable
+"exercise_id" (snake_case, e.g. "bench_press", "lat_pulldown") plus rich
+metadata: body part, equipment, technique cues, common mistakes.
+
+Whenever you log a workout set or prescribe an exercise in a plan, include
+"exercise_id" if the exercise matches one in the library — this links your
+log entry to the richer library data so the dashboard can show equipment,
+cues, and video for it. If the athlete mentions an exercise that ISN'T in
+the library (e.g. "Bulgarian split squats" when the library only has the
+12 starter movements), that's fine — just omit "exercise_id" and log the
+free-text exercise name as usual. Never invent an exercise_id that doesn't
+exist in the library; an unrecognized exercise_id is silently ignored and
+falls back to free text anyway, so it's never harmful to omit it when
+unsure.
+
 ## LOGGING NEW DATA
 When the athlete tells you new data (weight, food, workout sets, measurements,
 or goal-relevant info as described above), extract it and output a structured
@@ -240,8 +258,8 @@ block at the VERY END of your response:
   "duration_min": 60,
   "perceived_effort": 8,
   "sets": [
-    {{"exercise": "bench_press", "set_number": 1, "reps": 5, "weight_kg": 85, "rpe": 7}},
-    {{"exercise": "bench_press", "set_number": 2, "reps": 5, "weight_kg": 85, "rpe": 8}}
+    {{"exercise": "bench press", "exercise_id": "bench_press", "set_number": 1, "reps": 5, "weight_kg": 85, "rpe": 7}},
+    {{"exercise": "bench press", "exercise_id": "bench_press", "set_number": 2, "reps": 5, "weight_kg": 85, "rpe": 8}}
   ]
 }}
 [/LOG_DATA]
@@ -316,17 +334,28 @@ Other valid log types:
       "order_index": 1,
       "exercises": [
         {{
-          "exercise": "bench_press",
+          "exercise_id": "bench_press",
+          "exercise_name": "bench press",
           "sets": 4,
           "reps": "5",
           "rir": 2,
-          "progression_rule": "add 2.5kg when all reps clean"
+          "rest_sec": 180,
+          "tempo": "2-0-1",
+          "progression_rule": "add 2.5kg when all reps are clean",
+          "order_index": 1
         }}
       ]
     }}
   ]
 }}
 [/LOG_DATA]
+
+Note on the "plan" type: only include "exercise_id" for exercises that are
+actually in the library (see EXERCISE LIBRARY above) — for anything else,
+give "exercise_name" only and leave "exercise_id" out. "rest_sec" and
+"tempo" are program-specific (the same exercise can have different
+rest/tempo across mesocycles), so set them per-exercise based on the
+training goal, not copied from the library.
 
 
 Only output a [LOG_DATA] block when the athlete gives you concrete new data to save,
@@ -350,6 +379,11 @@ def build_dynamic_context(
     if intent in ["workout", "history"]:
         chunks.append(
             get_exercise_context(user_message)
+        )
+
+    if intent in ["workout", "planning"]:
+        chunks.append(
+            get_exercise_library_context()
         )
 
     if intent == "progress":

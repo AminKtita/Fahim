@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApi } from '../hooks/useApi'
 import { getWeightTrend, getLatestMetrics, getSummaries, getExerciseHistory, getWorkouts } from '../lib/api'
+import { groupSetsByExercise } from '../lib/exerciseGrouping'
 import Panel from '../components/ui/Panel'
 import SectionDivider from '../components/ui/SectionDivider'
 import MetricsForm from '../components/forms/MetricsForm'
@@ -25,10 +26,10 @@ export default function Progress() {
   const { data: summaries }                          = useApi(() => getSummaries(30))
   const { data: workouts }                           = useApi(() => getWorkouts(90))
   const [showForm,       setShowForm]       = useState(false)
-  const [selectedLift,   setSelectedLift]   = useState(null)
+  const [selectedLift,   setSelectedLift]   = useState(null) // { key, name, queryValue } | null
   const { data: liftHistory }               = useApi(
-    selectedLift ? () => getExerciseHistory(selectedLift, 30) : null,
-    [selectedLift]
+    selectedLift ? () => getExerciseHistory(selectedLift.queryValue, 30) : null,
+    [selectedLift?.key]
   )
 
   const refetch = () => { refetchTrend(); refetchLatest() }
@@ -45,9 +46,16 @@ export default function Progress() {
   const weightDelta   = latestWeight && prevWeight ? (latestWeight - prevWeight).toFixed(1) : null
 
   // Detect exercises user has actually logged
-  const loggedExercises = [...new Set(
-    workouts?.flatMap(w => w.sets?.map(s => s.exercise?.toLowerCase()) ?? []).filter(Boolean) ?? []
-  )].sort()
+  const allSets = workouts?.flatMap(w => w.sets ?? []) ?? []
+  const loggedExerciseGroups = groupSetsByExercise(allSets)
+    .map(g => ({
+      key: g.key,
+      name: g.name,
+      // exercise_id is the more reliable query value when present —
+      // falls back to the free-text name for legacy/unlinked sets.
+      queryValue: g.sets[0]?.exercise_id || g.sets[0]?.exercise,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   // Lift history chart data
   const liftChartData = liftHistory?.map(h => ({
@@ -131,25 +139,25 @@ export default function Progress() {
       <div className={styles.strengthSection}>
         {/* Exercise selector */}
         <div className={styles.liftSelector}>
-          {COMMON_LIFTS.filter(l => loggedExercises.includes(l)).map(l => (
+          {loggedExerciseGroups.filter(g => COMMON_LIFTS.includes(g.name.toLowerCase())).map(g => (
             <button
-              key={l}
-              className={`${styles.liftChip} ${selectedLift === l ? styles.liftChipActive : ''}`}
-              onClick={() => setSelectedLift(selectedLift === l ? null : l)}
+              key={g.key}
+              className={`${styles.liftChip} ${selectedLift?.key === g.key ? styles.liftChipActive : ''}`}
+              onClick={() => setSelectedLift(selectedLift?.key === g.key ? null : g)}
             >
-              {l}
+              {g.name}
             </button>
           ))}
-          {loggedExercises.filter(e => !COMMON_LIFTS.includes(e)).map(e => (
+          {loggedExerciseGroups.filter(g => !COMMON_LIFTS.includes(g.name.toLowerCase())).map(g => (
             <button
-              key={e}
-              className={`${styles.liftChip} ${selectedLift === e ? styles.liftChipActive : ''}`}
-              onClick={() => setSelectedLift(selectedLift === e ? null : e)}
+              key={g.key}
+              className={`${styles.liftChip} ${selectedLift?.key === g.key ? styles.liftChipActive : ''}`}
+              onClick={() => setSelectedLift(selectedLift?.key === g.key ? null : g)}
             >
-              {e}
+              {g.name}
             </button>
           ))}
-          {loggedExercises.length === 0 && (
+          {loggedExerciseGroups.length === 0 && (
             <span className={styles.emptyHint}>No exercises logged yet</span>
           )}
         </div>
@@ -159,7 +167,7 @@ export default function Progress() {
             {!hasLiftData ? (
               <div className={styles.emptyState}>
                 <span className={styles.emptyStateIcon}>📈</span>
-                <span className={styles.emptyStateText}>Not enough data for {selectedLift} yet</span>
+                <span className={styles.emptyStateText}>Not enough data for {selectedLift.name} yet</span>
                 <span className={styles.emptyStateSub}>Log at least 2 sessions with this exercise to see a trend.</span>
               </div>
             ) : (
@@ -199,7 +207,7 @@ export default function Progress() {
           </div>
         )}
 
-        {!selectedLift && loggedExercises.length > 0 && (
+        {!selectedLift && loggedExerciseGroups.length > 0 && (
           <div className={styles.liftPrompt}>Select an exercise above to see its strength trend</div>
         )}
       </div>
