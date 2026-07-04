@@ -1,8 +1,9 @@
 /* status badges */
-.statusHit     { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
-.statusPartial { background: var(--blue-bg);   color: var(--blue);   border: 1px solid var(--blue-border);   }
-.statusOff     { background: var(--warn-bg);   color: var(--warn);   border: 1px solid var(--warn-border);   }
-.statusMissed  { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+.statusHit      { background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-border); }
+.statusExceeded { background: var(--purple-bg);  color: var(--purple); border: 1px solid var(--purple-border); }
+.statusPartial  { background: var(--blue-bg);   color: var(--blue);   border: 1px solid var(--blue-border);   }
+.statusOff      { background: var(--warn-bg);   color: var(--warn);   border: 1px solid var(--warn-border);   }
+.statusMissed   { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
 
 /* targets strip */
 .targetsStrip {
@@ -44,6 +45,41 @@
 /* ═══ Meal composer ("From recipes" mode) ═══ */
 .mealsWrap { display: flex; flex-direction: column; gap: 12px; }
 
+.waterQuickAdd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+}
+.waterQuickAddLabel { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.waterQuickAddInput {
+  flex: 1;
+  max-width: 100px;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+.waterQuickAddBtn {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.waterQuickAddBtn:hover { filter: brightness(1.1); }
+.waterQuickAddBtn:disabled { opacity: 0.6; cursor: default; }
+
 /* logged meals so far */
 .loggedMealsBox {
   background: var(--surface2);
@@ -64,7 +100,8 @@
   font-size: 10px; font-family: var(--mono); letter-spacing: 0.03em;
   padding: 2px 8px; border-radius: 20px; border: 1px solid;
 }
-.mealStatusHit     { color: var(--accent);  border-color: var(--accent-border);  background: var(--accent-bg); }
+.mealStatusHit      { color: var(--accent);  border-color: var(--accent-border);  background: var(--accent-bg); }
+.mealStatusExceeded { color: var(--purple);  border-color: var(--purple-border);  background: var(--purple-bg); }
 .mealStatusPartial { color: var(--blue);   border-color: var(--blue-border);   background: var(--blue-bg); }
 .mealStatusOff     { color: var(--warn);   border-color: var(--warn-border,#b45309); background: var(--warn-bg, #fef3c7); }
 .mealStatusMissed  { color: var(--danger); border-color: var(--danger-border); background: var(--danger-bg); }
