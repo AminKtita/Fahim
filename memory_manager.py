@@ -375,16 +375,46 @@ def get_exercise_history_aliases(aliases, limit=30):
 
 def log_nutrition(log_date, calories=None, protein_g=None,
                   carbs_g=None, fat_g=None, water_ml=None, notes=None):
+    """
+    Upsert a nutrition_log row for log_date.
+
+    When water_ml or notes are None (e.g. when called from _sync_nutrition_log
+    after a meal is logged), the existing values in the DB are preserved via
+    COALESCE so that manually entered water intake and daily notes are never
+    silently overwritten with NULL.
+    """
     conn = get_conn()
     conn.execute("""
         INSERT INTO nutrition_log
             (date, calories, protein_g, carbs_g, fat_g, water_ml, notes)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(date) DO UPDATE SET
-            calories=excluded.calories, protein_g=excluded.protein_g,
-            carbs_g=excluded.carbs_g, fat_g=excluded.fat_g,
-            water_ml=excluded.water_ml, notes=excluded.notes
+            calories  = excluded.calories,
+            protein_g = excluded.protein_g,
+            carbs_g   = excluded.carbs_g,
+            fat_g     = excluded.fat_g,
+            water_ml  = COALESCE(excluded.water_ml, water_ml),
+            notes     = COALESCE(excluded.notes,    notes)
     """, (log_date, calories, protein_g, carbs_g, fat_g, water_ml, notes))
+    conn.commit()
+    conn.close()
+
+
+def update_water(log_date, water_ml):
+    """
+    Upsert ONLY water_ml for log_date — used by the 'log meals' tab's water
+    quick-add control, which must not disturb the calories/macros that were
+    computed from meal_logs (unlike log_nutrition, which overwrites
+    calories/macros unconditionally when called with a full payload).
+    Creates a bare nutrition_log row (all other fields NULL) if the date
+    doesn't have one yet.
+    """
+    conn = get_conn()
+    conn.execute("""
+        INSERT INTO nutrition_log (date, water_ml)
+        VALUES (?, ?)
+        ON CONFLICT(date) DO UPDATE SET water_ml = excluded.water_ml
+    """, (log_date, water_ml))
     conn.commit()
     conn.close()
 
@@ -406,12 +436,26 @@ def get_nutrition(days=7):
 def log_body_metrics(log_date, weight_kg=None, body_fat_pct=None,
                      waist_cm=None, chest_cm=None, hips_cm=None,
                      arm_cm=None, thigh_cm=None, notes=None):
+    """
+    Upsert body metrics for log_date.
+    body_metrics.date has a UNIQUE constraint; a second entry for the same
+    day overwrites the first silently (matches user preference).
+    """
     conn = get_conn()
     conn.execute("""
         INSERT INTO body_metrics
             (date, weight_kg, body_fat_pct, waist_cm, chest_cm,
              hips_cm, arm_cm, thigh_cm, notes)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(date) DO UPDATE SET
+            weight_kg    = excluded.weight_kg,
+            body_fat_pct = excluded.body_fat_pct,
+            waist_cm     = excluded.waist_cm,
+            chest_cm     = excluded.chest_cm,
+            hips_cm      = excluded.hips_cm,
+            arm_cm       = excluded.arm_cm,
+            thigh_cm     = excluded.thigh_cm,
+            notes        = excluded.notes
     """, (log_date, weight_kg, body_fat_pct, waist_cm, chest_cm,
           hips_cm, arm_cm, thigh_cm, notes))
     conn.commit()
@@ -500,6 +544,34 @@ def _is_planned_rest_day(iso_date, plan_days_by_weekday):
 
 
 def _nutrition_status(n, targets):
+    """
+    Returns one of: None, 'missed', 'off', 'partial', 'exceeded', 'hit'.
+
+    Floors (minimum % of target to count as "hit" that macro) are unchanged
+    from the original design: calories/protein 95%, carbs 90%, fat 85% —
+    tightest on protein/calories since those drive outcomes most directly,
+    looser on carbs/fat which vary more day to day.
+
+    Ceilings (maximum % of target before a macro counts as "exceeded") are
+    intentionally asymmetric per macro, matching how a coach would treat
+    each one:
+      - calories 110%: this is the primary lever for cut/bulk/recomp, so
+        the tolerance above target is kept tight — overshooting calories
+        works directly against a cut and can turn a lean bulk into a dirty
+        one.
+      - protein 160%: extra protein has minimal downside for a healthy
+        athlete (well-supported in sports nutrition — under-eating protein
+        is a much bigger practical risk than over-eating it), so the
+        ceiling is generous and only flags genuinely extreme intake.
+      - carbs / fat 130%: looser than calories since day-to-day variation
+        in carb/fat sources is normal, but still catches a clear, sustained
+        overshoot.
+
+    A day that undershoots calories (<70%, or <40% for 'missed') is always
+    reported as 'off'/'missed' even if some other macro is simultaneously
+    over its ceiling — running a large calorie deficit is the more urgent
+    signal to surface.
+    """
     if not n:
         return None
     if n.get("notes") == _NUTRITION_OFF_PLAN_SENTINEL:
@@ -529,10 +601,16 @@ def _nutrition_status(n, targets):
     carb_ok = ((carb or 0) >= t_carb * 0.90) if t_carb > 0 else True
     fat_ok  = ((fat  or 0) >= t_fat  * 0.85) if t_fat  > 0 else True
     filled  = sum(1 for v in (cal, prot, carb, fat) if v is not None and v > 0)
-    if cal_ok and prot_ok and carb_ok and fat_ok and filled == 4:
-        return "hit"
     if t_cal > 0 and cal < t_cal * 0.70:
         return "off"
+    cal_over  = t_cal  > 0 and cal          > t_cal  * 1.10
+    prot_over = t_prot > 0 and prot         > t_prot * 1.60
+    carb_over = t_carb > 0 and (carb or 0)  > t_carb * 1.30
+    fat_over  = t_fat  > 0 and (fat  or 0)  > t_fat  * 1.30
+    if cal_over or prot_over or carb_over or fat_over:
+        return "exceeded"
+    if cal_ok and prot_ok and carb_ok and fat_ok and filled == 4:
+        return "hit"
     return "partial"
 
 

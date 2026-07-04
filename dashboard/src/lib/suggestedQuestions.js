@@ -104,12 +104,21 @@ export function getSuggestedQuestions(status) {
     })
   }
 
-  if (yesterdayNutStatus === 'off' || yesterdayNutStatus === 'partial' || yesterdayNutStatus === 'missed') {
+  if (yesterdayNutStatus === 'off' || yesterdayNutStatus === 'partial' || yesterdayNutStatus === 'missed' || yesterdayNutStatus === 'exceeded') {
     candidates.push({
       id: 'yesterday-nutrition',
       priority: 65,
       label: "How was yesterday's nutrition?",
       text: "How did yesterday's nutrition compare to my targets? What should I focus on today to make up for it?",
+    })
+  }
+
+  if (todayNutStatus === 'exceeded') {
+    candidates.push({
+      id: 'today-exceeded',
+      priority: 60,
+      label: "I went over my targets today — now what?",
+      text: "I exceeded my nutrition targets today. Is this something to worry about, and how should I approach the rest of the week?",
     })
   }
 

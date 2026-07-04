@@ -1,6 +1,9 @@
 import os
+import logging
 import memory_manager as mm
 from datetime import date, timedelta
+
+logger = logging.getLogger("fahim.snapshot_writer")
 
 MEMORY_DIR = os.path.join(os.path.dirname(__file__), "memory")
 
@@ -463,7 +466,7 @@ def update_all():
     write_recent_progress()
     write_history_index()
     write_plan()
-    print(f"[+] Memory snapshots updated — {date.today().isoformat()}")
+    logger.info("Memory snapshots updated — %s", date.today().isoformat())
 
 
 if __name__ == "__main__":

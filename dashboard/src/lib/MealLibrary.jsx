@@ -17,6 +17,7 @@ import {
   createIngredient, updateIngredient, deleteIngredient,
   getRecipes, getIngredients as fetchAllIngredients,
   createRecipe, updateRecipe, deleteRecipe,
+  uploadRecipeImage, deleteRecipeImage, resolveRecipeImageSrc,
 } from './api'
 import { useApi } from '../hooks/useApi'
 import styles from './MealLibrary.module.css'
@@ -377,8 +378,9 @@ function RecipeIngRow({ row, allIngredients, onChange, onRemove }) {
 
 const BLANK_RECIPE = { name: '', category: RECIPE_CATEGORIES[0], image_url: '', video_url: '', notes: '' }
 
-function RecipeForm({ initial, onSave, onCancel, saving, error }) {
+function RecipeForm({ initial, onSave, onCancel, saving, error, onImageChanged }) {
   const { data: allIngredients } = useApi(fetchAllIngredients)
+  const recipeId = initial?.id ?? null // only set once the recipe has been created
 
   const [form, setForm]       = useState(initial ? {
     name: initial.name, category: initial.category,
@@ -391,12 +393,50 @@ function RecipeForm({ initial, onSave, onCancel, saving, error }) {
     })) || [{ ingredient_id: '', quantity_g: '' }]
   )
   const [imgError, setImgError] = useState(false)
+  const [imageBusy, setImageBusy] = useState(false)
+  const [imageUploadError, setImageUploadError] = useState(null)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const addRow = () => setRows(r => [...r, { ingredient_id: '', quantity_g: '' }])
   const removeRow = (idx) => setRows(r => r.filter((_, i) => i !== idx))
   const updateRow = (idx, val) => setRows(r => r.map((row, i) => i === idx ? val : row))
+
+  // ── photo upload (only available once the recipe exists, i.e. recipeId is set —
+  // a brand new recipe needs to be created first before it has an id to attach a photo to) ──
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file later
+    if (!file || !recipeId) return
+    setImageBusy(true)
+    setImageUploadError(null)
+    try {
+      const result = await uploadRecipeImage(recipeId, file)
+      set('image_url', result.image_url)
+      setImgError(false)
+      onImageChanged?.()
+    } catch (err) {
+      setImageUploadError(err?.response?.data?.detail ?? 'Upload failed')
+    } finally {
+      setImageBusy(false)
+    }
+  }
+
+  const handleRemoveImage = async () => {
+    if (!recipeId) { set('image_url', ''); return } // not yet saved — just clear the field locally
+    setImageBusy(true)
+    setImageUploadError(null)
+    try {
+      await deleteRecipeImage(recipeId)
+      set('image_url', '')
+      setImgError(false)
+      onImageChanged?.()
+    } catch (err) {
+      setImageUploadError(err?.response?.data?.detail ?? 'Could not remove photo')
+    } finally {
+      setImageBusy(false)
+    }
+  }
 
   // Live totals
   const totals = useMemo(() => {
@@ -450,13 +490,33 @@ function RecipeForm({ initial, onSave, onCancel, saving, error }) {
           onChange={e => { set('image_url', e.target.value); setImgError(false) }}
           placeholder="https://…/photo.jpg" />
       </label>
+
+      <div className={styles.field}>
+        <span>Or upload a photo from your device</span>
+        {recipeId ? (
+          <label className={styles.uploadBtn}>
+            {imageBusy ? 'Uploading…' : 'Choose file…'}
+            <input type="file" accept="image/png,image/jpeg,image/gif,image/webp"
+              onChange={handleFileUpload} disabled={imageBusy} style={{ display: 'none' }} />
+          </label>
+        ) : (
+          <span className={styles.muted}>Save the recipe first, then you can upload a photo.</span>
+        )}
+        {imageUploadError && <span className={styles.imgPreviewError}>{imageUploadError}</span>}
+      </div>
+
       {form.image_url && (
         <div className={styles.imgPreviewBox}>
           {!imgError ? (
-            <img src={form.image_url} alt="" className={styles.imgPreview}
+            <img src={resolveRecipeImageSrc(form.image_url)} alt="" className={styles.imgPreview}
               onError={() => setImgError(true)} />
           ) : (
             <span className={styles.imgPreviewError}>Couldn't load image from this URL</span>
+          )}
+          {recipeId && (
+            <button type="button" className={styles.removeBtn} onClick={handleRemoveImage} disabled={imageBusy}>
+              Remove photo
+            </button>
           )}
         </div>
       )}
@@ -512,7 +572,7 @@ function RecipeCard({ recipe, onEdit, onDelete, onView }) {
     <div className={styles.recipeCard}>
       {recipe.image_url && (
         <button className={styles.cardThumbBtn} onClick={() => onView(recipe)}>
-          <img src={recipe.image_url} alt="" className={styles.cardThumb}
+          <img src={resolveRecipeImageSrc(recipe.image_url)} alt="" className={styles.cardThumb}
             onError={e => { e.currentTarget.parentElement.style.display = 'none' }} />
         </button>
       )}
@@ -550,7 +610,7 @@ function RecipeDetail({ recipe, onClose }) {
   return (
     <Modal title={recipe.name} onClose={onClose} wide>
       {recipe.image_url && !imgError && (
-        <img src={recipe.image_url} alt={recipe.name} className={styles.detailImg}
+        <img src={resolveRecipeImageSrc(recipe.image_url)} alt={recipe.name} className={styles.detailImg}
           onError={() => setImgError(true)} />
       )}
 
@@ -640,9 +700,18 @@ function RecipesTab() {
   const handleSave = async (data) => {
     setSaving(true); setFormError(null)
     try {
-      if (modal === 'add') await createRecipe(data)
-      else await updateRecipe(selected.id, data)
-      await refetch(); close()
+      if (modal === 'add') {
+        const created = await createRecipe(data)
+        // Switch into edit mode for the recipe we just created, instead
+        // of closing — so the photo upload control (which needs a
+        // recipe id) becomes available right away without reopening the form.
+        setSelected({ ...data, id: created.id })
+        setModal('edit')
+      } else {
+        await updateRecipe(selected.id, data)
+        close()
+      }
+      await refetch()
     } catch (e) {
       setFormError(e.response?.data?.detail || e.message)
     } finally { setSaving(false) }
@@ -694,6 +763,7 @@ function RecipesTab() {
             initial={modal === 'edit' ? selected : null}
             onSave={handleSave} onCancel={close}
             saving={saving} error={formError}
+            onImageChanged={refetch}
           />
         </Modal>
       )}

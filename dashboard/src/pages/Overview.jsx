@@ -302,7 +302,7 @@ export default function Overview() {
           <span className={styles.nutritionBarTitle}>Today's nutrition</span>
           {nutStatus && (
             <span className={`${styles.nutBadge} ${styles[`nutBadge_${nutStatus}`]}`}>
-              {nutStatus === 'hit' ? 'On target' : nutStatus === 'partial' ? 'Partial' : nutStatus === 'off' ? 'Off plan' : 'Missed'}
+              {nutStatus === 'hit' ? 'On target' : nutStatus === 'exceeded' ? 'Exceeded' : nutStatus === 'partial' ? 'Partial' : nutStatus === 'off' ? 'Off plan' : 'Missed'}
             </span>
           )}
         </div>

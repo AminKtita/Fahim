@@ -1,5 +1,10 @@
-# Ignore the local SQLite database folder
-db/
+# Ignore the runtime database and image uploads, but keep schema/migration scripts
+db/fitness.db
+db/fitness.db.bak_*
+db/exercise_images/
+
+# Ignore log files
+*.log
 
 # Ignore the local AI memory markdown files
 memory/

@@ -79,7 +79,8 @@
   border: 1px solid;
   letter-spacing: 0.03em;
 }
-.statusHit     { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-border); }
+.statusHit      { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-border); }
+.statusExceeded { background: var(--purple-bg); color: var(--purple); border-color: var(--purple-border); }
 .statusPartial { background: var(--blue-bg);   color: var(--blue);   border-color: var(--blue-border);   }
 .statusOff     { background: var(--warn-bg);   color: var(--warn);   border-color: var(--warn-border);   }
 .statusMissed  { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }
@@ -185,12 +186,14 @@
   cursor: default;
 }
 .heatHit     { background: var(--accent-bg); border: 1px solid var(--accent-border); }
+.heatExceeded { background: var(--purple-bg); border: 1px solid var(--purple-border); }
 .heatPartial { background: var(--blue-bg);   border: 1px solid var(--blue-border);   }
 .heatOff     { background: var(--warn-bg);   border: 1px solid var(--warn-border);   }
 .heatMissed  { background: var(--danger-bg); border: 1px solid var(--danger-border); }
 .heatEmpty   { background: var(--surface2);  border: 1px solid var(--border);        }
 .heatDay { font-family: var(--mono); font-size: 9px; color: var(--faint); }
 .heatHit .heatDay     { color: var(--accent); }
+.heatExceeded .heatDay { color: var(--purple); }
 .heatPartial .heatDay { color: var(--blue);   }
 .heatOff .heatDay     { color: var(--warn);   }
 .heatMissed .heatDay  { color: var(--danger); }
@@ -260,4 +263,5 @@
 }
 
 .hit  { color: var(--accent) !important; }
+.exceeded { color: var(--purple) !important; }
 .miss { color: var(--danger) !important; }

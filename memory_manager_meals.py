@@ -310,8 +310,9 @@ def log_meal(
     conn = get_conn()
     cursor = conn.execute("""
         INSERT INTO meal_logs
-            (log_date, recipe_id, recipe_name_snapshot, calories, protein_g, carbs_g, fat_g, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (log_date, recipe_id, recipe_name_snapshot,
+             calories, protein_g, carbs_g, fat_g, notes, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     """, (log_date, recipe_id, recipe_name_snapshot, calories, protein_g, carbs_g, fat_g, notes))
     meal_id = cursor.lastrowid
     conn.commit()

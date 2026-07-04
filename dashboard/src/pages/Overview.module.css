@@ -113,7 +113,8 @@
   border-radius: 20px;
   border: 1px solid;
 }
-.nutBadge_hit     { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-border); }
+.nutBadge_hit      { color: var(--accent); background: var(--accent-bg); border-color: var(--accent-border); }
+.nutBadge_exceeded { color: var(--purple); background: var(--purple-bg); border-color: var(--purple-border); }
 .nutBadge_partial { color: var(--blue);   background: var(--blue-bg);   border-color: var(--blue-border); }
 .nutBadge_off     { color: var(--warn);   background: var(--warn-bg);   border-color: var(--warn-border); }
 .nutBadge_missed  { color: var(--danger); background: var(--danger-bg); border-color: var(--danger-border); }

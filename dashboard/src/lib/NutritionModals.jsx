@@ -3,13 +3,37 @@
  * Used by both Schedule and Nutrition pages.
  */
 import { useState } from 'react'
-import { logNutrition, updateNutrition, deleteNutrition, getRecipes, logMeal, getMeals, deleteMeal as deleteMealApi } from './api'
+import { logNutrition, updateNutrition, deleteNutrition, getRecipes, logMeal, getMeals, deleteMeal as deleteMealApi, resolveRecipeImageSrc, setWater } from './api'
 import styles from './WorkoutModals.module.css'
 import nutStyles from './NutritionModals.module.css'
 import dayjs from 'dayjs'
 
 const positiveNum = v => (!v || Number(v) > 0) ? v : ''
 
+/**
+ * deriveNutStatus — mirrors memory_manager.py: _nutrition_status(). Keep
+ * the two in sync if this formula ever changes.
+ *
+ * Returns one of: null, 'missed', 'off', 'partial', 'exceeded', 'hit'.
+ *
+ * Floors (min % of target to count as "hit" that macro): calories/protein
+ * 95%, carbs 90%, fat 85% — tightest on protein/calories since those drive
+ * outcomes most directly, looser on carbs/fat which vary more day to day.
+ *
+ * Ceilings (max % of target before a macro counts as "exceeded") are
+ * intentionally asymmetric per macro:
+ *   - calories 110%: the primary lever for cut/bulk/recomp, kept tight —
+ *     overshooting calories works directly against a cut and can turn a
+ *     lean bulk into a dirty one.
+ *   - protein 160%: extra protein has minimal downside for a healthy
+ *     athlete, so the ceiling is generous and only flags extreme intake.
+ *   - carbs / fat 130%: looser than calories since day-to-day variation in
+ *     carb/fat sources is normal, but still catches a clear overshoot.
+ *
+ * A day that undershoots calories (<70%, or <40% for 'missed') is always
+ * reported as 'off'/'missed' even if another macro is over its ceiling —
+ * a large calorie deficit is the more urgent signal to surface.
+ */
 export function deriveNutStatus(n, targets) {
   if (!n) return null
   if (n.notes === '__MISSED__' || n.missed) return 'missed'
@@ -25,27 +49,39 @@ export function deriveNutStatus(n, targets) {
 
   const cal  = n.calories   ?? 0
   const prot = n.protein_g  ?? 0
+  const carb = n.carbs_g    ?? 0
+  const fat  = n.fat_g      ?? 0
   const tCal  = targets.calories   ?? 0
   const tProt = targets.protein_g  ?? 0
+  const tCarb = targets.carbs_g    ?? 0
+  const tFat  = targets.fat_g      ?? 0
 
   if (tCal > 0 && cal < tCal * 0.40) return 'missed'
 
   const calOk  = tCal  > 0 ? cal  >= tCal  * 0.95 : true
   const protOk = tProt > 0 ? prot >= tProt * 0.95 : true
-  const carbOk = targets.carbs_g > 0 ? (n.carbs_g ?? 0) >= targets.carbs_g * 0.90 : true
-  const fatOk  = targets.fat_g   > 0 ? (n.fat_g   ?? 0) >= targets.fat_g   * 0.85 : true
+  const carbOk = tCarb > 0 ? carb >= tCarb * 0.90 : true
+  const fatOk  = tFat  > 0 ? fat  >= tFat  * 0.85 : true
   const filled = [n.calories, n.protein_g, n.carbs_g, n.fat_g].filter(v => v != null && v > 0).length
 
-  if (calOk && protOk && carbOk && fatOk && filled === 4) return 'hit'
   if (tCal > 0 && cal < tCal * 0.70) return 'off'
+
+  const calOver  = tCal  > 0 && cal  > tCal  * 1.30
+  const protOver = tProt > 0 && prot > tProt * 1.60
+  const carbOver = tCarb > 0 && carb > tCarb * 1.30
+  const fatOver  = tFat  > 0 && fat  > tFat  * 1.30
+  if (calOver || protOver || carbOver || fatOver) return 'exceeded'
+
+  if (calOk && protOk && carbOk && fatOk && filled === 4) return 'hit'
   return 'partial'
 }
 
 const STATUS_CFG = {
-  hit:     { label:'On target', cls: nutStyles.statusHit },
-  partial: { label:'Partial',   cls: nutStyles.statusPartial },
-  off:     { label:'Off plan',  cls: nutStyles.statusOff },
-  missed:  { label:'Missed',    cls: nutStyles.statusMissed },
+  hit:      { label:'On target', cls: nutStyles.statusHit },
+  exceeded: { label:'Exceeded',  cls: nutStyles.statusExceeded },
+  partial:  { label:'Partial',   cls: nutStyles.statusPartial },
+  off:      { label:'Off plan',  cls: nutStyles.statusOff },
+  missed:   { label:'Missed',    cls: nutStyles.statusMissed },
 }
 
 export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
@@ -69,6 +105,13 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
   const [mealsLoading,      setMealsLoading]       = useState(false)
   const [mealsSaving,       setMealsSaving]        = useState(false)
   const [mealsError,        setMealsError]         = useState(null)
+
+  // ── Water quick-add (meals tab only) — kept separate from `form.water_l`
+  // (the manual-totals tab) because it saves independently via a dedicated
+  // water-only endpoint that never touches meal-derived macros. ──
+  const [mealsWaterL,       setMealsWaterL]        = useState('')
+  const [waterSaving,       setWaterSaving]        = useState(false)
+  const [waterError,        setWaterError]         = useState(null)
 
   const loadDayMeals = async (date) => {
     if (!date) return
@@ -125,6 +168,8 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
     setError(null); setConfirmDel(false)
     setPickedRecipe(null); setPickedRows([]); setMealsError(null)
     setRecipeSearch(''); setRecipeCategory('All'); setMealsListCollapsed(false); setRecipesCollapsed(false)
+    setMealsWaterL(selNutrition?.water_ml ? (selNutrition.water_ml / 1000).toString() : '')
+    setWaterError(null)
     setModal('log')
     // Sequential, not concurrent: avoids two SQLite connections opening
     // within the same instant, which has been a source of "database is
@@ -133,6 +178,19 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
       await ensureRecipesLoaded()
       await loadDayMeals(selDate)
     })()
+  }
+
+  const saveMealsWater = async () => {
+    const ml = mealsWaterL ? Math.round(Number(mealsWaterL) * 1000) : 0
+    setWaterSaving(true); setWaterError(null)
+    try {
+      await setWater(selDate, ml)
+      onSaved?.()
+    } catch (e) {
+      setWaterError(e.response?.data?.detail || e.message)
+    } finally {
+      setWaterSaving(false)
+    }
   }
 
   // user selects a recipe from the library to start editing quantities
@@ -387,6 +445,21 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
               {nMode==='meals' && (
                 <div className={nutStyles.mealsWrap}>
 
+                  {/* water — independent of meal logging, saves via its own endpoint
+                      so it never disturbs macros computed from logged meals */}
+                  <div className={nutStyles.waterQuickAdd}>
+                    <span className={nutStyles.waterQuickAddLabel}>💧 Water (L)</span>
+                    <input type="number" min="0" step="0.1" placeholder="e.g. 2.5"
+                      value={mealsWaterL}
+                      onChange={e => setMealsWaterL(e.target.value)}
+                      className={nutStyles.waterQuickAddInput} />
+                    <button type="button" onClick={saveMealsWater} disabled={waterSaving}
+                      className={nutStyles.waterQuickAddBtn}>
+                      {waterSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    {waterError && <span className={styles.error}>{waterError}</span>}
+                  </div>
+
                   {/* logged meals so far today */}
                   {mealsLoading && <div className={nutStyles.recipeHint}>Loading today's meals…</div>}
                   {!mealsLoading && dayMeals.length > 0 && (() => {
@@ -398,8 +471,8 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
                       fat_g:     dayMealTotals.fat_g,
                     }
                     const st = deriveNutStatus(mealNutRow, targets)
-                    const STATUS_LABEL = { hit: 'On target', partial: 'Partial', off: 'Off plan', missed: 'Missed' }
-                    const STATUS_CLS   = { hit: nutStyles.mealStatusHit, partial: nutStyles.mealStatusPartial, off: nutStyles.mealStatusOff, missed: nutStyles.mealStatusMissed }
+                    const STATUS_LABEL = { hit: 'On target', exceeded: 'Exceeded', partial: 'Partial', off: 'Off plan', missed: 'Missed' }
+                    const STATUS_CLS   = { hit: nutStyles.mealStatusHit, exceeded: nutStyles.mealStatusExceeded, partial: nutStyles.mealStatusPartial, off: nutStyles.mealStatusOff, missed: nutStyles.mealStatusMissed }
                     return (
                       <div className={nutStyles.loggedMealsBox}>
                         <div className={nutStyles.loggedMealsHead}
@@ -483,7 +556,7 @@ export function useNutritionModals({ selDate, selNutrition, plan, onSaved }) {
                             {filteredRecipes.map(r => (
                               <button key={r.id} className={nutStyles.recipePickRow} onClick={() => { pickRecipe(r); setRecipesCollapsed(true) }}>
                                 {r.image_url && (
-                                  <img src={r.image_url} alt="" className={nutStyles.recipePickThumb}
+                                  <img src={resolveRecipeImageSrc(r.image_url)} alt="" className={nutStyles.recipePickThumb}
                                     onError={e => { e.currentTarget.style.display = 'none' }} />
                                 )}
                                 <span className={nutStyles.recipePickName}>{r.name}</span>

@@ -18,6 +18,7 @@ export const getNutrition     = (days = 30) => api.get(`/nutrition?days=${days}`
 export const logNutrition     = (data)      => api.post('/nutrition', data).then(r => r.data)
 export const updateNutrition  = (date, data) => api.patch(`/nutrition/${date}`, data).then(r => r.data)
 export const deleteNutrition  = (date)      => api.delete(`/nutrition/${date}`).then(r => r.data)
+export const setWater         = (date, water_ml) => api.patch(`/nutrition/${date}/water`, { water_ml }).then(r => r.data)
 
 // ── Body metrics ─────────────────────────────────────────
 export const getLatestMetrics = ()          => api.get('/metrics').then(r => r.data)
@@ -135,6 +136,32 @@ export const updateRecipe        = (id, data) =>
 
 export const deleteRecipe        = (id) =>
   api.delete(`/recipes/${id}`).then(r => r.data)
+
+// ── Recipe photo (single image: upload OR external URL) ───
+export const uploadRecipeImage = (recipeId, file) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return api.post(`/recipes/${recipeId}/image/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data)
+}
+
+export const deleteRecipeImage = (recipeId) =>
+  api.delete(`/recipes/${recipeId}/image`).then(r => r.data)
+
+/**
+ * Resolves a recipe's image_url for use as an <img src>.
+ * recipe.image_url can be:
+ *   - a full external URL ('https://…')                          → used as-is
+ *   - a locally uploaded file ('/media/recipe_images/xxx.jpg')   → prefixed with API_ORIGIN
+ *   - null / empty                                                → null
+ */
+export const resolveRecipeImageSrc = (imageUrl) => {
+  if (!imageUrl) return null
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl
+  if (imageUrl.startsWith('/media/')) return `${API_ORIGIN}${imageUrl}`
+  return imageUrl
+}
 
 // ── Meal Logs ────────────────────────────────────────────
 export const getMeals      = (date) =>

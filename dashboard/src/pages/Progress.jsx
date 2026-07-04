@@ -89,7 +89,7 @@ export default function Progress() {
           <SectionDivider label="Log body metrics" />
           <div className={styles.formWrap}>
             <Panel label="Body metrics">
-              <MetricsForm onSaved={() => { refetch(); setShowForm(false) }} />
+              <MetricsForm initial={latest} onSaved={() => { refetch(); setShowForm(false) }} />
             </Panel>
           </div>
         </>

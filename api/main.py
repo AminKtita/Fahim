@@ -54,6 +54,12 @@ EXERCISE_IMAGES_DIR = os.path.join(ROOT, "db", "exercise_images")
 os.makedirs(EXERCISE_IMAGES_DIR, exist_ok=True)
 app.mount("/media/exercise_images", StaticFiles(directory=EXERCISE_IMAGES_DIR), name="exercise_images")
 
+# ── Static files — locally uploaded recipe photos, served as-is.
+# db/recipe_images/<file> is reachable at /media/recipe_images/<file> ──
+RECIPE_IMAGES_DIR = os.path.join(ROOT, "db", "recipe_images")
+os.makedirs(RECIPE_IMAGES_DIR, exist_ok=True)
+app.mount("/media/recipe_images", StaticFiles(directory=RECIPE_IMAGES_DIR), name="recipe_images")
+
 # ── Routers ──
 app.include_router(profile.router,     prefix="/api/profile",      tags=["profile"])
 app.include_router(workouts.router,    prefix="/api/workouts",     tags=["workouts"])

@@ -3,11 +3,25 @@ import { logMetrics } from '../../lib/api'
 import dayjs from 'dayjs'
 import styles from './Form.module.css'
 
-export default function MetricsForm({ onSaved }) {
+export default function MetricsForm({ onSaved, initial }) {
+  // Prefill from the most recent logged metrics (if any) so the athlete
+  // only has to update what actually changed (e.g. weight) instead of
+  // re-typing measurements that rarely move day to day. The date field
+  // still defaults to today — this prefill is about starting values,
+  // not about editing a specific past entry. Saving still upserts by
+  // date, so submitting today's date when today already has an entry
+  // simply updates it.
+  const strOrBlank = v => (v ?? '') === '' ? '' : String(v)
+
   const [form, setForm] = useState({
     date: dayjs().format('YYYY-MM-DD'),
-    weight_kg: '', body_fat_pct: '',
-    waist_cm: '', chest_cm: '', hips_cm: '', arm_cm: '', thigh_cm: '',
+    weight_kg:    strOrBlank(initial?.weight_kg),
+    body_fat_pct: strOrBlank(initial?.body_fat_pct),
+    waist_cm:     strOrBlank(initial?.waist_cm),
+    chest_cm:     strOrBlank(initial?.chest_cm),
+    hips_cm:      strOrBlank(initial?.hips_cm),
+    arm_cm:       strOrBlank(initial?.arm_cm),
+    thigh_cm:     strOrBlank(initial?.thigh_cm),
     notes: '',
   })
   const [saving, setSaving] = useState(false)
@@ -51,6 +65,11 @@ export default function MetricsForm({ onSaved }) {
 
   return (
     <div>
+      {initial && (
+        <p className={styles.hint} style={{ marginBottom: 10 }}>
+          Prefilled from your last entry ({dayjs(initial.date).format('MMM D')}) — update anything that's changed.
+        </p>
+      )}
       <div className={styles.grid2}>
         <div className={styles.field}>
           <label className={styles.label}>Date</label>

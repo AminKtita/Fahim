@@ -107,6 +107,7 @@
   border-radius: 50%;
 }
 .nutOk      { background: var(--accent); }
+.nutExceeded { background: var(--purple); }
 .nutPartial { background: var(--blue);   }
 .nutMissed  { background: var(--danger); }
 .nutEmpty   { background: var(--border); }
@@ -209,6 +210,7 @@
   border-radius: 50%;
 }
 .nutDotOk      { background: var(--accent);  opacity: 0.9; }
+.nutDotExceeded { background: var(--purple); opacity: 0.85; }
 .nutDotPartial { background: var(--blue);    opacity: 0.8; }
 .nutDotOff     { background: var(--warn);    opacity: 0.7; }
 .nutDotMissed  { background: var(--danger);  opacity: 0.8; }
@@ -441,6 +443,7 @@
   margin-bottom: 10px;
 }
 .nutTagHit     { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-border); }
+.nutTagExceeded { background: var(--purple-bg); color: var(--purple); border-color: var(--purple-border); }
 .nutTagPartial { background: var(--blue-bg);   color: var(--blue);   border-color: var(--blue-border);   }
 .nutTagOff     { background: var(--warn-bg);   color: var(--warn);   border-color: var(--warn-border);   }
 .nutTagMissed  { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-border); }

@@ -12,13 +12,14 @@ import dayjs from 'dayjs'
 import styles from './Nutrition.module.css'
 
 const STATUS_CLS = {
-  hit:     styles.statusHit,
-  partial: styles.statusPartial,
-  off:     styles.statusOff,
-  missed:  styles.statusMissed,
+  hit:      styles.statusHit,
+  exceeded: styles.statusExceeded,
+  partial:  styles.statusPartial,
+  off:      styles.statusOff,
+  missed:   styles.statusMissed,
 }
 
-const STATUS_LABEL = { hit: 'On target', partial: 'Partial', off: 'Off plan', missed: 'Missed' }
+const STATUS_LABEL = { hit: 'On target', exceeded: 'Exceeded', partial: 'Partial', off: 'Off plan', missed: 'Missed' }
 
 const TOP_TABS = [
   { key: 'log',     label: 'Log & Tracking' },
@@ -55,6 +56,8 @@ export default function Nutrition() {
 
   const macroHit  = (v, target, thr = 0.95) => target && v != null && v >= target * thr
   const macroMiss = (v, target, thr = 0.70) => target && v != null && v < target * thr
+  // Ceilings mirror deriveNutStatus() in lib/NutritionModals.jsx — keep in sync.
+  const macroExceeded = (v, target, ceil = 1.10) => target && v != null && v > target * ceil
 
   const todayStatus = deriveNutStatus(todayNut, targets)
   const hasTargets  = Object.keys(targets).length > 0
@@ -230,10 +233,11 @@ export default function Nutrition() {
           {last30.map(date => {
             const st = heatStatus(date)
             const cellCls =
-              st === 'hit'     ? styles.heatHit     :
-              st === 'partial' ? styles.heatPartial :
-              st === 'off'     ? styles.heatOff     :
-              st === 'missed'  ? styles.heatMissed  :
+              st === 'hit'      ? styles.heatHit      :
+              st === 'exceeded' ? styles.heatExceeded :
+              st === 'partial'  ? styles.heatPartial  :
+              st === 'off'      ? styles.heatOff      :
+              st === 'missed'   ? styles.heatMissed   :
               styles.heatEmpty
             return (
               <div key={date} className={`${styles.heatCell} ${cellCls}`}
@@ -289,16 +293,32 @@ export default function Nutrition() {
                           </span>
                         )}
                       </td>
-                      <td className={macroHit(n.calories, targets.calories) ? styles.hit : macroMiss(n.calories, targets.calories) ? styles.miss : ''}>
+                      <td className={
+                        macroExceeded(n.calories, targets.calories, 1.10) ? styles.exceeded :
+                        macroHit(n.calories, targets.calories) ? styles.hit :
+                        macroMiss(n.calories, targets.calories) ? styles.miss : ''
+                      }>
                         {isMissed ? '—' : (n.calories ?? '—')}
                       </td>
-                      <td className={macroHit(n.protein_g, targets.protein_g) ? styles.hit : macroMiss(n.protein_g, targets.protein_g) ? styles.miss : ''}>
+                      <td className={
+                        macroExceeded(n.protein_g, targets.protein_g, 1.60) ? styles.exceeded :
+                        macroHit(n.protein_g, targets.protein_g) ? styles.hit :
+                        macroMiss(n.protein_g, targets.protein_g) ? styles.miss : ''
+                      }>
                         {isMissed ? '—' : (n.protein_g != null ? `${n.protein_g}g` : '—')}
                       </td>
-                      <td className={macroHit(n.carbs_g, targets.carbs_g, 0.90) ? styles.hit : macroMiss(n.carbs_g, targets.carbs_g) ? styles.miss : ''}>
+                      <td className={
+                        macroExceeded(n.carbs_g, targets.carbs_g, 1.30) ? styles.exceeded :
+                        macroHit(n.carbs_g, targets.carbs_g, 0.90) ? styles.hit :
+                        macroMiss(n.carbs_g, targets.carbs_g) ? styles.miss : ''
+                      }>
                         {isMissed ? '—' : (n.carbs_g != null ? `${n.carbs_g}g` : '—')}
                       </td>
-                      <td className={macroHit(n.fat_g, targets.fat_g, 0.85) ? styles.hit : macroMiss(n.fat_g, targets.fat_g) ? styles.miss : ''}>
+                      <td className={
+                        macroExceeded(n.fat_g, targets.fat_g, 1.30) ? styles.exceeded :
+                        macroHit(n.fat_g, targets.fat_g, 0.85) ? styles.hit :
+                        macroMiss(n.fat_g, targets.fat_g) ? styles.miss : ''
+                      }>
                         {isMissed ? '—' : (n.fat_g != null ? `${n.fat_g}g` : '—')}
                       </td>
                       <td>{isMissed ? '—' : (n.water_ml ? `${+(n.water_ml / 1000).toFixed(2)}L` : '—')}</td>

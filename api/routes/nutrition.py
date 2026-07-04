@@ -26,6 +26,10 @@ class NutritionIn(BaseModel):
     notes: Optional[str] = None
 
 
+class WaterIn(BaseModel):
+    water_ml: int
+
+
 @router.get("")
 def get_nutrition(days: int = 30):
     return mm.get_nutrition(days=days)
@@ -44,6 +48,20 @@ def log_nutrition(data: NutritionIn):
     )
     snapshot_writer.update_all()
     return {"status": "saved"}
+
+
+@router.patch("/{log_date}/water")
+def update_water(log_date: str, data: WaterIn):
+    """
+    Water-only upsert — used by the 'From recipes' meal-logging tab so the
+    athlete can log water without touching the macros that came from
+    logged meals. Unlike PATCH /{log_date} below, this always upserts
+    (creates the day's row if it doesn't exist yet), since meals may not
+    have been logged for the day yet.
+    """
+    mm.update_water(log_date, data.water_ml)
+    snapshot_writer.update_all()
+    return {"status": "updated"}
 
 
 @router.patch("/{log_date}")

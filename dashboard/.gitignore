@@ -1,24 +1,25 @@
-# Logs
-logs
+# Ignore the runtime database and image uploads, but keep schema/migration scripts
+db/fitness.db
+db/fitness.db.bak_*
+db/exercise_images/
+db/recipe_images/
+
+# Ignore log files
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Ignore the local AI memory markdown files
+memory/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Ignore Python cache files
+**/__pycache__/
+*.pyc
+
+# Ignore virtual environments (just in case)
+api/.venv/
+
+# Ignore node_modules if you have them in your frontend folder
+**/node_modules/
+
+# Ignore all __pycache__ folders and .pyc files anywhere in the project
+**/__pycache__/
+*.pyc

@@ -167,9 +167,10 @@ export default function Schedule() {
                   styles.weekDotEmpty
                 }`} />
                 <span className={`${styles.weekNutDot} ${
-                  nutSt === 'hit'     ? styles.nutOk      :
-                  nutSt === 'partial' ? styles.nutPartial  :
-                  nutSt === 'missed'  ? styles.nutMissed   :
+                  nutSt === 'hit'      ? styles.nutOk       :
+                  nutSt === 'exceeded' ? styles.nutExceeded :
+                  nutSt === 'partial'  ? styles.nutPartial  :
+                  nutSt === 'missed'   ? styles.nutMissed   :
                   styles.nutEmpty
                 }`} />
               </div>
@@ -241,10 +242,11 @@ export default function Schedule() {
                   {/* Nutrition dot */}
                   {!isFut && (
                     <span className={`${styles.nutDot} ${
-                      nutStatus === 'hit'     ? styles.nutDotOk      :
-                      nutStatus === 'partial' ? styles.nutDotPartial :
-                      nutStatus === 'off'     ? styles.nutDotOff     :
-                      nutStatus === 'missed'  ? styles.nutDotMissed  :
+                      nutStatus === 'hit'      ? styles.nutDotOk       :
+                      nutStatus === 'exceeded' ? styles.nutDotExceeded :
+                      nutStatus === 'partial'  ? styles.nutDotPartial  :
+                      nutStatus === 'off'      ? styles.nutDotOff      :
+                      nutStatus === 'missed'   ? styles.nutDotMissed   :
                       styles.nutDotEmpty
                     }`} />
                   )}
@@ -441,8 +443,8 @@ export default function Schedule() {
                   <div className={styles.detailCard}>
                     {(() => {
                       const st = deriveNutStatus(selNutrition, plan?.nutrition_targets)
-                      const STATUS_LABEL = { hit: 'On target', partial: 'Partial', off: 'Off plan', missed: 'Missed' }
-                      const STATUS_CLS   = { hit: styles.nutTagHit, partial: styles.nutTagPartial, off: styles.nutTagOff, missed: styles.nutTagMissed }
+                      const STATUS_LABEL = { hit: 'On target', exceeded: 'Exceeded', partial: 'Partial', off: 'Off plan', missed: 'Missed' }
+                      const STATUS_CLS   = { hit: styles.nutTagHit, exceeded: styles.nutTagExceeded, partial: styles.nutTagPartial, off: styles.nutTagOff, missed: styles.nutTagMissed }
                       return st ? <span className={`${styles.nutTag} ${STATUS_CLS[st]}`}>{STATUS_LABEL[st]}</span> : null
                     })()}
                     <div className={styles.nutDetailGrid}>
