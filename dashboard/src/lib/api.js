@@ -163,6 +163,19 @@ export const resolveRecipeImageSrc = (imageUrl) => {
   return imageUrl
 }
 
+// ── Day Plan (work shift + full-day timeline) ─────────────
+export const getDayPlan     = (date)         => api.get('/day-plan', { params: { date } }).then(r => r.data)
+export const saveDayBlock   = (data)         => api.post('/day-plan', data).then(r => r.data)
+export const updateDayBlock = (id, data)     => api.patch(`/day-plan/${id}`, data).then(r => r.data)
+export const deleteDayBlock = (id)           => api.delete(`/day-plan/${id}`).then(r => r.data)
+export const hideAutoBlock  = (date, block_type) =>
+  api.post('/day-plan/hide-auto', null, { params: { date, block_type } }).then(r => r.data)
+export const getWorkScheduleSettings    = ()       => api.get('/day-plan/settings').then(r => r.data)
+export const updateWorkScheduleSettings = (data)   => api.patch('/day-plan/settings', data).then(r => r.data)
+export const getMealRules               = ()       => api.get('/day-plan/meal-rules').then(r => r.data)
+export const updateMealRule             = (shift_type, data) =>
+  api.patch(`/day-plan/meal-rules/${shift_type}`, data).then(r => r.data)
+
 // ── Meal Logs ────────────────────────────────────────────
 export const getMeals      = (date) =>
   api.get('/meals', { params: { date } }).then(r => r.data)

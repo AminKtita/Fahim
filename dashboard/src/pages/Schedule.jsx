@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useApi } from '../hooks/useApi'
-import { getWorkouts, getNutrition, getSummaries, getPlan } from '../lib/api'
+import { getWorkouts, getNutrition, getSummaries, getPlan, getWorkScheduleSettings } from '../lib/api'
 import { useStatus } from '../lib/StatusContext'
 import { useWorkoutModals, getPlanDayForDate } from '../lib/WorkoutModals'
 import { useNutritionModals, deriveNutStatus } from '../lib/NutritionModals'
+import { useDayPlanModals } from '../lib/DayPlanModal'
+import { useScheduleSettingsModals } from '../lib/ScheduleSettingsModal'
+import { getShiftForDate } from '../lib/workSchedule'
 import { groupSetsByExercise } from '../lib/exerciseGrouping'
 import dayjs from 'dayjs'
 import styles from './Schedule.module.css'
@@ -98,6 +101,10 @@ export default function Schedule() {
 
   const workoutModals   = useWorkoutModals({ plan, selDate: selected, selWorkout, onSaved })
   const nutritionModals = useNutritionModals({ selDate: selected, selNutrition, plan, onSaved })
+  const dayPlanModals   = useDayPlanModals({ plan, onSaved: () => {} })
+
+  const { data: scheduleSettings, refetch: refetchSettings } = useApi(() => getWorkScheduleSettings(), [])
+  const scheduleSettingsModals = useScheduleSettingsModals({ onSaved: refetchSettings })
 
   return (
     <div className={styles.wrap}>
@@ -117,6 +124,10 @@ export default function Schedule() {
           <span className={styles.monthLabel}>{cursor.format('MMMM YYYY')}</span>
           <button className="btn-ghost" style={{ padding: '6px 14px' }} onClick={nextMonth}>Next →</button>
           <button className="btn-ghost" style={{ padding: '6px 14px', marginLeft: 8 }} onClick={goToday}>Today</button>
+          <button className="btn-ghost" style={{ padding: '6px 14px', marginLeft: 8 }}
+            onClick={() => scheduleSettingsModals.open()}>
+            ⚙ Shift settings
+          </button>
         </div>
       </div>
 
@@ -219,6 +230,7 @@ export default function Schedule() {
               else if (isScheduled)                      cellClass = styles.cellScheduled
 
               const nutStatus = deriveNutStatus(n, plan?.nutrition_targets)
+              const shift = getShiftForDate(iso, scheduleSettings)
 
               return (
                 <div key={iso} onClick={() => setSelected(iso)} className={cellClass}>
@@ -255,6 +267,31 @@ export default function Schedule() {
                   {streakDates.has(iso) && (
                     <span className={styles.streakDot} title="Streak day — target hit" />
                   )}
+
+                  {/* Work shift badge */}
+                  {inMonth && shift.type !== 'rest' && (
+                    <span
+                      className={`${styles.shiftBadge} ${
+                        shift.type === 'morning' ? styles.shiftBadgeMorning :
+                        shift.type === 'evening' ? styles.shiftBadgeEvening :
+                        styles.shiftBadgeNight
+                      }`}
+                      title={`${shift.type[0].toUpperCase()}${shift.type.slice(1)} shift · ${shift.start}–${shift.end}`}
+                    >
+                      {shift.type === 'morning' ? 'M' : shift.type === 'evening' ? 'E' : 'N'}
+                    </span>
+                  )}
+
+                  {/* Day plan trigger — subtle by default, full opacity on hover, always clickable */}
+                  {inMonth && (
+                    <button
+                      className={styles.dayPlanTrigger}
+                      title="Open day plan"
+                      onClick={(e) => { e.stopPropagation(); setSelected(iso); dayPlanModals.open(iso) }}
+                    >
+                      📋
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -274,6 +311,11 @@ export default function Schedule() {
               <span className={styles.lgNutPartial}>● Partial</span>
               <span className={styles.lgNutMissed}>● Missed</span>
               <span className={styles.lgStreak}>✦ Streak day</span>
+            </div>
+            <div className={styles.legendGroup}>
+              <span className={styles.lgShiftMorning}>M Morning shift</span>
+              <span className={styles.lgShiftEvening}>E Evening shift</span>
+              <span className={styles.lgShiftNight}>N Night shift</span>
             </div>
           </div>
         </div>
@@ -490,6 +532,8 @@ export default function Schedule() {
 
       {workoutModals.Modals()}
       {nutritionModals.Modals()}
+      {dayPlanModals.Modals()}
+      {scheduleSettingsModals.Modals()}
     </div>
   )
 }

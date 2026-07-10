@@ -220,11 +220,64 @@
 .streakDot {
   position: absolute;
   top: 5px;
-  right: 5px;
+  right: 20px;
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: var(--warn);
+}
+
+/* Work shift badge — bottom-right corner */
+.shiftBadge {
+  position: absolute;
+  bottom: 4px;
+  right: 5px;
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.shiftBadgeMorning { background: var(--blue-bg);   color: var(--blue); }
+.shiftBadgeEvening { background: rgba(227,166,23,0.15); color: #e3a617; }
+.shiftBadgeNight   { background: rgba(168,120,255,0.15); color: var(--purple); }
+
+/* Day plan trigger — top-left corner, subtle by default, full opacity on cell hover */
+.dayPlanTrigger {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 15px;
+  height: 15px;
+  font-size: 9px;
+  line-height: 1;
+  border: none;
+  border-radius: 3px;
+  background: var(--surface2);
+  opacity: 0.35;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s, transform 0.15s;
+  padding: 0;
+}
+.cell:hover .dayPlanTrigger,
+.cellDone:hover .dayPlanTrigger,
+.cellRest:hover .dayPlanTrigger,
+.cellPlanRest:hover .dayPlanTrigger,
+.cellScheduled:hover .dayPlanTrigger,
+.cellMissed:hover .dayPlanTrigger,
+.cellToday:hover .dayPlanTrigger,
+.cellSel:hover .dayPlanTrigger,
+.cellTodaySel:hover .dayPlanTrigger {
+  opacity: 1;
+  transform: scale(1.15);
 }
 
 /* ── Legend ── */
@@ -252,6 +305,9 @@
 .lgNutPartial { color: var(--blue);   }
 .lgNutMissed  { color: var(--danger); }
 .lgStreak     { color: var(--warn);   }
+.lgShiftMorning { color: var(--blue); }
+.lgShiftEvening { color: #e3a617; }
+.lgShiftNight   { color: var(--purple); }
 
 /* ── Detail panel ── */
 .detail {

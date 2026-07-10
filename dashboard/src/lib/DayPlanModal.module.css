@@ -1,0 +1,116 @@
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(3,7,18,0.85); backdrop-filter: blur(3px);
+  z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); width: 100%; max-width: 560px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+.mHead {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
+}
+.navBtn {
+  flex-shrink: 0; font-size: 14px; color: var(--muted); background: var(--surface2);
+  border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  width: 30px; height: 30px; cursor: pointer; transition: all .15s;
+}
+.navBtn:hover { color: var(--text); background: var(--surface); }
+.mTitle { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; text-align: center; }
+.mLabel { font-size: 13px; font-weight: 600; color: var(--text); }
+.dateRow { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.mDate   { font-size: 12px; color: var(--muted); }
+.dateJump {
+  width: 16px; height: 16px; padding: 0; border: none; background: none;
+  opacity: 0.4; cursor: pointer; filter: invert(0.7);
+}
+.mClose { flex-shrink: 0; font-size: 14px; color: var(--muted); background: none; border: none; padding: 4px 8px; cursor: pointer; border-radius: var(--radius-sm); }
+.mClose:hover { background: var(--surface2); color: var(--text); }
+.mBody { padding: 16px 20px 20px; }
+
+.statusMsg { padding: 24px 0 8px; text-align: center; font-size: 12px; color: var(--muted); }
+
+.shiftTag {
+  display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  text-transform: uppercase; color: var(--accent); background: var(--accent-bg);
+  border: 1px solid var(--accent-border); border-radius: var(--radius-sm);
+  padding: 4px 10px; margin-bottom: 14px;
+}
+
+.planSection { margin-bottom: 18px; }
+.planSectionLabel {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px;
+}
+.planCard {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.planCardType { font-size: 12px; font-weight: 600; color: var(--text); text-transform: capitalize; margin-bottom: 6px; }
+.planExList { display: flex; flex-direction: column; gap: 4px; }
+.planExRow { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.planExDetail { color: var(--faint); font-family: var(--mono); }
+.planEmptyCard {
+  background: var(--surface2); border: 1px dashed var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  font-size: 11px; color: var(--faint);
+}
+
+.timeline { display: flex; flex-direction: column; gap: 8px; }
+
+.blockRow {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--surface2); border: 1px solid var(--border); border-left-width: 3px;
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.blockIcon {
+  font-size: 15px; flex-shrink: 0; width: 26px; height: 26px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+}
+.blockInfo { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.blockTitle { font-size: 12px; font-weight: 500; color: var(--text); }
+.blockTime  { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.blockNotes { font-size: 11px; color: var(--faint); }
+
+.blockActions { display: flex; gap: 6px; flex-shrink: 0; }
+.blockBtn {
+  font-size: 11px; padding: 5px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--muted); cursor: pointer; transition: all .15s;
+}
+.blockBtn:hover { color: var(--text); background: var(--surface2); }
+
+.addBtn {
+  margin-top: 4px; padding: 10px; border-radius: var(--radius-sm);
+  border: 1px dashed var(--border2); background: transparent;
+  color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s;
+}
+.addBtn:hover { color: var(--text); border-color: var(--accent-border); background: var(--surface2); }
+
+.editForm { display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.label { font-size: 11px; font-weight: 500; color: var(--muted); }
+.field input {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  color: var(--text); font-family: var(--sans); font-size: 12px;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.categoryPills { display: flex; gap: 6px; flex-wrap: wrap; }
+.categoryPill {
+  font-size: 11px; padding: 6px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--muted); cursor: pointer; transition: all .15s;
+}
+.categoryPill:hover { color: var(--text); }
+.categoryPillActive { font-weight: 600; }
+
+.errorMsg { font-size: 12px; color: var(--danger); }
+
+.actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--border); }
+.actions button { padding: 9px 18px; font-size: 12px; }

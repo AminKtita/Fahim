@@ -223,3 +223,47 @@ CREATE TABLE IF NOT EXISTS exercise_images (
 );
 
 CREATE INDEX IF NOT EXISTS idx_exercise_images_exercise_id ON exercise_images(exercise_id);
+
+-- ── Day Plan / work-shift scheduling ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS work_schedule_settings (
+    id                              INTEGER PRIMARY KEY CHECK (id = 1),
+    regime_anchor_date              DATE NOT NULL,
+    regime_length_days              INTEGER NOT NULL DEFAULT 30,
+    cycle_length_days               INTEGER NOT NULL DEFAULT 6,
+    morning_start                   TEXT NOT NULL DEFAULT '07:00',
+    morning_end                     TEXT NOT NULL DEFAULT '14:00',
+    evening_start                   TEXT NOT NULL DEFAULT '14:00',
+    evening_end                     TEXT NOT NULL DEFAULT '22:00',
+    night_start                     TEXT NOT NULL DEFAULT '22:00',
+    night_end                       TEXT NOT NULL DEFAULT '07:00',
+    default_workout_duration_min    INTEGER NOT NULL DEFAULT 60,
+    workout_buffer_after_work_min   INTEGER NOT NULL DEFAULT 75,
+    workout_buffer_before_work_min  INTEGER NOT NULL DEFAULT 105,
+    rest_day_workout_time           TEXT NOT NULL DEFAULT '09:00'
+);
+
+CREATE TABLE IF NOT EXISTS meal_time_rules (
+    shift_type   TEXT PRIMARY KEY CHECK (shift_type IN ('morning','evening','night','rest')),
+    meal1_label  TEXT NOT NULL,
+    meal1_time   TEXT NOT NULL,
+    meal2_label  TEXT NOT NULL,
+    meal2_time   TEXT NOT NULL,
+    meal3_label  TEXT NOT NULL,
+    meal3_time   TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS day_blocks (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    date        TEXT NOT NULL,
+    block_type  TEXT NOT NULL CHECK (block_type IN ('work','workout','meal1','meal2','meal3','custom')),
+    category    TEXT NOT NULL DEFAULT 'other' CHECK (category IN ('work','workout','meal','entertainment','other')),
+    title       TEXT,
+    start_time  TEXT,
+    end_time    TEXT,
+    status      TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','hidden')),
+    source      TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('auto','manual')),
+    notes       TEXT,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_day_blocks_date ON day_blocks(date);
