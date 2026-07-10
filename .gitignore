@@ -1,7 +1,10 @@
 # Ignore the runtime database and image uploads, but keep schema/migration scripts
 db/fitness.db
 db/fitness.db.bak_*
+db/*.db
+db/*.sqbpro
 db/exercise_images/
+db/recipe_images/
 
 # Ignore log files
 *.log
