@@ -1,0 +1,168 @@
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--faint);
+  margin-bottom: 6px;
+}
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.planSub {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  gap: 4px;
+}
+
+/* meso stats */
+.mesoGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.mesoStat {
+  background: var(--surface);
+  padding: 16px 20px;
+}
+.mesoLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+.mesoVal {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.warn { color: var(--warn) !important; }
+
+.deloadTag {
+  font-family: var(--mono);
+  font-size: 9px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid var(--warn-border);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+/* days grid */
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.dayCard {
+  background: var(--surface);
+  padding: 18px 22px;
+}
+
+.dayHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.dayName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.exTable { width: 100%; border-collapse: collapse; }
+.exTable th {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-align: left;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+.exTable td {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.exTable tr:last-child td { border-bottom: none; }
+.exName { color: var(--text) !important; font-size: 13px !important; }
+
+.noExercises {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--faint);
+  padding: 8px 0;
+}
+
+.progressionNotes {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.progressionRow {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+}
+.progEx   { font-family: var(--mono); font-size: 9px; color: var(--faint); min-width: 80px; }
+.progRule { font-size: 11px; color: var(--muted); }
+
+/* nutrition targets */
+.targetsRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.targetBox {
+  background: var(--surface);
+  padding: 16px 20px;
+}
+.targetLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+.targetVal {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.targetUnit { font-size: 12px; color: var(--muted); margin-left: 3px; font-weight: 400; }
+
+/* notes */
+.planNotes {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}

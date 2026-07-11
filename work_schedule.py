@@ -25,11 +25,6 @@ shift type:
     night shift   -> suggest BEFORE work  (avoids crossing midnight)
     rest day      -> fixed default time (rest_day_workout_time)
 
-The workout suggestion is only added when the active training plan
-actually schedules a session on that date (see _is_workout_day below) —
-otherwise a rest day in your split would always show a phantom "Workout"
-block regardless of what the plan says.
-
 Meal suggestion
 ---------------
 Three main meals only, timed purely off the work shift (not the workout),
@@ -193,6 +188,86 @@ def compute_workout_suggestion(shift: dict, settings: dict) -> dict:
     return {"start": start, "end": end, "label": "Workout (before work)"}
 
 
+def compute_auto_blocks(iso_date: str, settings: dict, meal_rules: dict) -> list:
+    """Returns the list of auto-computed blocks for a date (work, workout, 3 meals)."""
+    shift = get_shift_for_date(iso_date, settings)
+    blocks = []
+
+    if shift["type"] != "rest":
+        blocks.append({
+            "block_type": "work",
+            "category": "work",
+            "title": f"{shift['type'].capitalize()} shift",
+            "start_time": shift["start"],
+            "end_time": shift["end"],
+            "source": "auto",
+        })
+
+    workout = compute_workout_suggestion(shift, settings)
+    if _is_workout_day(iso_date):
+        blocks.append({
+            "block_type": "workout",
+            "category": "workout",
+            "title": workout["label"],
+            "start_time": workout["start"],
+            "end_time": workout["end"],
+            "source": "auto",
+        })
+
+    rules = meal_rules.get(shift["type"])
+    if rules:
+        suggestions = _get_meal_suggestions(iso_date, rules) if _is_today_or_future(iso_date) else None
+        for i in (1, 2, 3):
+            label = rules[f"meal{i}_label"]
+            time = rules[f"meal{i}_time"]
+            title = label
+            notes = None
+
+            slot = suggestions[i - 1] if suggestions else None
+            if slot and slot.get("recipe"):
+                title = f"{slot['recipe']['name']} (×{slot['scale']})"
+                m = slot["macros"]
+                notes = f"{m['calories']} kcal · {m['protein_g']}g P · {m['carbs_g']}g C · {m['fat_g']}g F"
+
+            blocks.append({
+                "block_type": f"meal{i}",
+                "category": "meal",
+                "title": title,
+                "start_time": time,
+                "end_time": None,
+                "source": "auto",
+                "notes": notes,
+            })
+
+    return blocks
+
+
+def _is_today_or_future(iso_date: str) -> bool:
+    return iso_date >= date.today().isoformat()
+
+
+def _get_meal_suggestions(iso_date: str, rules: dict):
+    """
+    Returns the 3 meal_recommender slots (recipe + portion scale fit to
+    the remaining macro budget) for this date's real shift-based meal
+    labels, or None if there's no active nutrition target / recipe
+    library / anything goes wrong. Display-only — never logs anything.
+
+    Imported lazily (not at module top-level) because meal_recommender.py
+    imports this module too (for recommend_for_day_plan); deferring the
+    import until call time avoids a circular-import failure at load time.
+    """
+    try:
+        import meal_recommender as mr
+        slot_labels = [rules["meal1_label"], rules["meal2_label"], rules["meal3_label"]]
+        result = mr.recommend_day_plan(iso_date, num_meals=3, slot_labels=slot_labels)
+        if result.get("error"):
+            return None
+        return result["slots"]
+    except Exception:
+        return None
+
+
 # ── training-plan lookup (is this date actually a workout day?) ──────────
 # The workout auto-suggestion should only appear on days the active split
 # actually schedules a session — not on every day regardless of the plan.
@@ -246,47 +321,6 @@ def _is_workout_day(iso_date: str) -> bool:
     if day is None:
         return False  # weekday isn't in the split at all -> rest
     return (day.get("session_type") or "").strip().lower() != "rest"
-
-
-def compute_auto_blocks(iso_date: str, settings: dict, meal_rules: dict) -> list:
-    """Returns the list of auto-computed blocks for a date (work, workout, 3 meals)."""
-    shift = get_shift_for_date(iso_date, settings)
-    blocks = []
-
-    if shift["type"] != "rest":
-        blocks.append({
-            "block_type": "work",
-            "category": "work",
-            "title": f"{shift['type'].capitalize()} shift",
-            "start_time": shift["start"],
-            "end_time": shift["end"],
-            "source": "auto",
-        })
-
-    if _is_workout_day(iso_date):
-        workout = compute_workout_suggestion(shift, settings)
-        blocks.append({
-            "block_type": "workout",
-            "category": "workout",
-            "title": workout["label"],
-            "start_time": workout["start"],
-            "end_time": workout["end"],
-            "source": "auto",
-        })
-
-    rules = meal_rules.get(shift["type"])
-    if rules:
-        for i in (1, 2, 3):
-            blocks.append({
-                "block_type": f"meal{i}",
-                "category": "meal",
-                "title": rules[f"meal{i}_label"],
-                "start_time": rules[f"meal{i}_time"],
-                "end_time": None,
-                "source": "auto",
-            })
-
-    return blocks
 
 
 def get_day_plan(iso_date: str) -> dict:

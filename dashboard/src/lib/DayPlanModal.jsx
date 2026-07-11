@@ -5,6 +5,13 @@
  * or deleting an auto block materializes an override for that date without
  * touching the underlying shift settings. Blocks are themed by category
  * (work / workout / meal / entertainment / other) with an emoji + color.
+ *
+ * Meal blocks (meal1/meal2/meal3) are automatically enriched server-side
+ * with a macro-fit recipe suggestion for today/future dates — no button,
+ * no extra fetch, it's just part of what getDayPlan() returns. This is
+ * purely a display suggestion: nothing is ever logged to nutrition from
+ * here. Editing a meal block replaces the suggestion with your own text;
+ * Remove clears it back to an empty slot.
  */
 
 import { useState } from 'react'
@@ -175,6 +182,7 @@ export function useDayPlanModals({ plan, onSaved } = {}) {
                     <div className={styles.planSectionLabel}>24-hour plan</div>
                     {dayPlan.blocks.map((b, i) => {
                       const cat = CATEGORY_BY_KEY[b.category] ?? CATEGORY_BY_KEY.other
+                      const isSuggestedMeal = b.block_type.startsWith('meal') && b.source === 'auto' && b.notes
                       return (
                         <div key={`${b.block_type}-${i}`} className={styles.blockRow}
                           style={{ borderLeftColor: cat.color }}>
@@ -182,7 +190,10 @@ export function useDayPlanModals({ plan, onSaved } = {}) {
                             {cat.icon}
                           </span>
                           <div className={styles.blockInfo}>
-                            <span className={styles.blockTitle}>{b.title}</span>
+                            <span className={styles.blockTitle}>
+                              {b.title}
+                              {isSuggestedMeal && <span className={styles.suggestedTag}>suggested</span>}
+                            </span>
                             <span className={styles.blockTime}>
                               {b.start_time}
                               {b.end_time ? ` – ${b.end_time}` : ''}

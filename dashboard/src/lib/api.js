@@ -188,3 +188,8 @@ export const logMeal       = (data) =>
 
 export const deleteMeal    = (id, date) =>
   api.delete(`/meals/${id}`, { params: { date } }).then(r => r.data)
+
+export const getMealPlan = (date, num_meals = 3) =>
+  api.get('/meal-recommend', { params: { date, num_meals } }).then(r => r.data)
+export const getMealPlanForDayPlan = (date) =>
+  api.get('/meal-recommend/day-plan', { params: { date } }).then(r => r.data)

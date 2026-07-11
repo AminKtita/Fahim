@@ -3,6 +3,7 @@ import { useApi } from '../hooks/useApi'
 import { getNutrition, getPlan } from '../lib/api'
 import { useStatus } from '../lib/StatusContext'
 import { useNutritionModals, deriveNutStatus } from '../lib/NutritionModals'
+import { useMealPlanModals } from '../lib/MealPlanModal'
 import MealLibrary from '../lib/MealLibrary'
 import Panel from '../components/ui/Panel'
 import SectionDivider from '../components/ui/SectionDivider'
@@ -40,6 +41,7 @@ export default function Nutrition() {
 
   const onSaved = () => { refetch(); refreshStatus() }
   const todayModals = useNutritionModals({ selDate: today, selNutrition: todayNut, plan, onSaved })
+  const mealPlanModals = useMealPlanModals({ onSaved })
 
   const [histDate, setHistDate] = useState(null)
   const [histNut,  setHistNut]  = useState(null)
@@ -70,14 +72,21 @@ export default function Nutrition() {
           <div className={styles.pageTitle}>Nutrition</div>
           <div className={styles.pageSub}>Daily intake log, macro tracking, and your recipe library.</div>
         </div>
-        {topTab === 'log' && !todayNut?.calories && !isMissedToday && (
+        {topTab === 'log' && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-ghost" onClick={todayModals.openMeals}>
-              Add from recipe
+            <button className="btn-ghost" onClick={() => mealPlanModals.open(today)}>
+              🍽 Suggest meals
             </button>
-            <button className="btn-primary" onClick={todayModals.openLog}>
-              Log today
-            </button>
+            {!todayNut?.calories && !isMissedToday && (
+              <>
+                <button className="btn-ghost" onClick={todayModals.openMeals}>
+                  Add from recipe
+                </button>
+                <button className="btn-primary" onClick={todayModals.openLog}>
+                  Log today
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -347,6 +356,7 @@ export default function Nutrition() {
 
       {todayModals.Modals()}
       {histModals.Modals()}
+      {mealPlanModals.Modals()}
     </div>
   )
 }

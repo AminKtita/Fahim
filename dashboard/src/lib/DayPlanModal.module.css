@@ -72,9 +72,15 @@
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
 }
 .blockInfo { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.blockTitle { font-size: 12px; font-weight: 500; color: var(--text); }
+.blockTitle { font-size: 12px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 6px; }
 .blockTime  { font-family: var(--mono); font-size: 11px; color: var(--muted); }
 .blockNotes { font-size: 11px; color: var(--faint); }
+
+.suggestedTag {
+  font-size: 8px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-bg); border: 1px solid var(--accent-border);
+  border-radius: 20px; padding: 1px 6px;
+}
 
 .blockActions { display: flex; gap: 6px; flex-shrink: 0; }
 .blockBtn {
@@ -88,6 +94,7 @@
   margin-top: 4px; padding: 10px; border-radius: var(--radius-sm);
   border: 1px dashed var(--border2); background: transparent;
   color: var(--muted); font-size: 12px; cursor: pointer; transition: all .15s;
+  width: 100%;
 }
 .addBtn:hover { color: var(--text); border-color: var(--accent-border); background: var(--surface2); }
 

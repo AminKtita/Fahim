@@ -32,7 +32,9 @@ from api.routes import (
     ingredients,
     recipes,
     meals,
-    day_plan
+    day_plan,
+    meal_recommend,
+
 )
 
 app = FastAPI(
@@ -79,6 +81,9 @@ app.include_router(ingredients.router, prefix="/api/ingredients",  tags=["ingred
 app.include_router(recipes.router,     prefix="/api/recipes",      tags=["recipes"])
 app.include_router(meals.router,       prefix="/api/meals",        tags=["meals"])
 app.include_router(day_plan.router, prefix="/api/day-plan", tags=["day-plan"])
+
+app.include_router(meal_recommend.router, prefix="/api/meal-recommend", tags=["meal-recommend"])
+
 
 @app.get("/api/health")
 def health():

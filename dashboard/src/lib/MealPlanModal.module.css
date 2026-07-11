@@ -1,0 +1,89 @@
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(3,7,18,0.85); backdrop-filter: blur(3px);
+  z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); width: 100%; max-width: 560px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+.mHead {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
+  gap: 12px;
+}
+.mTitle { display: flex; flex-direction: column; gap: 3px; }
+.mLabel { font-size: 13px; font-weight: 600; color: var(--text); }
+.mDate  { font-size: 12px; color: var(--muted); }
+.headActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.mealCountSelect {
+  font-size: 11px; padding: 6px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border2); background: var(--surface2); color: var(--text);
+}
+.mClose { font-size: 14px; color: var(--muted); background: none; border: none; padding: 4px 8px; cursor: pointer; border-radius: var(--radius-sm); }
+.mClose:hover { background: var(--surface2); color: var(--text); }
+.mBody { padding: 18px 20px 20px; }
+
+.statusMsg { padding: 24px 0 8px; text-align: center; font-size: 12px; color: var(--muted); }
+.errorCard {
+  background: var(--danger-bg); border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm); padding: 12px 14px; font-size: 12px; color: var(--danger);
+}
+
+.summaryRow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+.macroPill {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 6px; text-align: center;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.macroPillVal { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--accent); }
+.macroPillOver .macroPillVal { color: var(--danger); }
+.macroPillLabel { font-size: 9px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.03em; }
+
+.slotList { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.slotCard {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 13px;
+}
+.slotHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.slotLabel { font-size: 12px; font-weight: 600; color: var(--text); }
+.slotCategory {
+  font-size: 9px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--muted); background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 2px 8px;
+}
+.slotEmpty { font-size: 11px; color: var(--faint); }
+
+.slotBody { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.slotImg { width: 44px; height: 44px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+.slotInfo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.slotName { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.slotScale { font-size: 10px; font-family: var(--mono); color: var(--accent); font-weight: 600; }
+.slotMacros { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+.slotBtn, .slotBtnDone {
+  width: 100%; padding: 7px; font-size: 11px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: all .15s;
+}
+.slotBtn {
+  border: 1px solid var(--accent-border); background: var(--accent-bg); color: var(--accent);
+}
+.slotBtn:hover:not(:disabled) { filter: brightness(1.15); }
+.slotBtnDone {
+  border: 1px solid var(--border2); background: var(--surface); color: var(--muted); cursor: default;
+}
+
+.leftoverRow {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; padding: 10px 0; border-top: 1px solid var(--border); margin-bottom: 4px;
+}
+.leftoverLabel { color: var(--muted); }
+.leftoverVals { font-family: var(--mono); color: var(--faint); }
+
+.errorMsg { font-size: 12px; color: var(--danger); margin-bottom: 8px; }
+
+.actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 10px; }
+.actions button { padding: 9px 18px; font-size: 12px; }
